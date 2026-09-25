@@ -19,6 +19,8 @@ const schema = z
     CORS_ORIGINS: z.string().default("http://localhost:5173"),
     COOKIE_SECURE: bool.optional(),
     UPLOAD_DIR: z.string().default("./uploads"),
+    /** Built web app (apps/web/dist). When set and present, the API also serves the site - one service. */
+    WEB_DIST_DIR: z.string().optional(),
     ADMIN_NAME: z.string().default("DigiBizz Admin"),
     ADMIN_EMAIL: z.email().optional(),
     ADMIN_PASSWORD: z.string().min(8).optional(),
@@ -49,7 +51,8 @@ export const config = {
   isProd: env.NODE_ENV === "production",
   isTest: env.NODE_ENV === "test",
   cookieSecure: env.COOKIE_SECURE ?? env.NODE_ENV === "production",
-  corsOrigins: env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean),
+  corsOrigins: [...env.CORS_ORIGINS.split(","), env.PUBLIC_WEB_URL].map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean),
   publicWebUrl: env.PUBLIC_WEB_URL.replace(/\/+$/, ""),
   uploadDir: path.resolve(env.UPLOAD_DIR),
+  webDistDir: env.WEB_DIST_DIR ? path.resolve(env.WEB_DIST_DIR) : null,
 };

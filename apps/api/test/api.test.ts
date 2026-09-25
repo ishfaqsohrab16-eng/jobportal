@@ -8,15 +8,12 @@ let mongo: MongoMemoryServer;
 let app: Express;
 let admin: ReturnType<typeof request.agent>;
 let candidate: ReturnType<typeof request.agent>;
-let orgId: string;
 
 const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
 
 const opportunity = (over: Record<string, unknown> = {}) => ({
   type: "job",
   title: "Backend Engineer",
-  organizationId: orgId,
-  category: "private",
   isITRelated: true,
   field: "Software Development",
   description: "Build and run the APIs behind our products for customers in Pakistan.",
@@ -90,15 +87,20 @@ describe("auth", () => {
 });
 
 describe("admin + public listings", () => {
-  it("creates an organization and opportunities", async () => {
-    const org = await admin
-      .post("/api/admin/organizations")
-      .send({ name: "Bolan Software House", category: "private", website: "https://example.com", city: "Quetta" })
-      .expect(201);
-    orgId = org.body.id;
-    expect(org.body.slug).toBe("bolan-software-house");
+  it("creates DigiBizz opportunities and ignores any other publisher", async () => {
+    // Organization management does not exist: the portal is DigiBizz-only.
+    await admin.get("/api/admin/organizations").expect(404);
+    await admin.post("/api/admin/organizations").send({ name: "Other Co", category: "private" }).expect(404);
+    await request(app).get("/api/organizations").expect(404);
 
-    await admin.post("/api/admin/opportunities").send(opportunity()).expect(201);
+    // Publisher, category and external apply links cannot be injected.
+    const created = await admin
+      .post("/api/admin/opportunities")
+      .send(opportunity({ organizationId: "6ab63a17c990d65007264715", category: "private", externalApplyUrl: "https://evil.example" }))
+      .expect(201);
+    expect(created.body.organization.name).toBe("DigiBizz Balochistan");
+    expect(created.body.category).toBe("government");
+    expect(created.body.externalApplyUrl).toBeUndefined();
     await admin.post("/api/admin/opportunities").send(opportunity({ title: "Receptionist", isITRelated: false, field: "Administration" })).expect(201);
     await admin.post("/api/admin/opportunities").send(opportunity({ title: "Hidden Draft Role", status: "draft" })).expect(201);
     await admin.post("/api/admin/opportunities").send(opportunity({ title: "Old Role", deadline: day(-3) })).expect(201);
@@ -109,6 +111,10 @@ describe("admin + public listings", () => {
     await admin
       .post("/api/admin/opportunities")
       .send(opportunity({ type: "training", title: "Freelancing Bootcamp", duration: "4 weeks", fee: 0, employmentType: null }))
+      .expect(201);
+    await admin
+      .post("/api/admin/opportunities")
+      .send(opportunity({ type: "program", title: "Full-Stack Web Course", duration: "6 months", eligibility: "Age 18-35, intermediate or above", fee: 0, employmentType: null }))
       .expect(201);
   });
 
@@ -205,7 +211,9 @@ describe("partner API", () => {
     expect(job).toMatchObject({
       title: "Backend Engineer",
       location: { country: "Pakistan", city: "Quetta" },
-      employer_name: "Bolan Software House",
+      employer_name: "DigiBizz Balochistan",
+      organization_name: "DigiBizz Balochistan",
+      organization: { name: "DigiBizz Balochistan", type: "Government", verified: true },
       number_of_positions: 3,
       salary: { min: 150000, max: 250000, currency: "PKR" },
       gender: "any",
@@ -219,7 +227,7 @@ describe("partner API", () => {
       benefits: ["Health insurance"],
       application_deadline: day(10),
       status: "open",
-      category: "Private",
+      category: "Government",
     });
     expect(job.description).toBeTruthy();
     expect(job.apply_link).toMatch(/\/opportunities\/.+\/apply\?ref=industechconnect$/);
@@ -232,13 +240,39 @@ describe("partner API", () => {
 
   it("serves internships and trainings, and filters by status", async () => {
     const interns = await request(app).get("/api/partner/v1/internships").set("X-API-Key", secret).expect(200);
-    expect(interns.body.data[0]).toMatchObject({ title: "Web Intern", duration: "3 months", eligibility: "Final year students" });
+    expect(interns.body.data[0]).toMatchObject({
+      title: "Web Intern",
+      description: expect.any(String),
+      duration: "3 months",
+      eligibility: "Final year students",
+      application_deadline: day(10),
+      organization_name: "DigiBizz Balochistan",
+      location: { city: "Quetta" },
+      apply_link: expect.stringMatching(/\/apply\?ref=industechconnect$/),
+    });
 
     const trainings = await request(app).get("/api/partner/v1/trainings").set("X-API-Key", secret).expect(200);
-    expect(trainings.body.data[0]).toMatchObject({ title: "Freelancing Bootcamp", fee: { amount: 0, is_free: true } });
+    expect(trainings.body.data[0]).toMatchObject({
+      title: "Freelancing Bootcamp",
+      description: expect.any(String),
+      eligibility: null,
+      duration: "4 weeks",
+      application_deadline: day(10),
+      organization_name: "DigiBizz Balochistan",
+      apply_link: expect.stringMatching(/\/apply\?ref=industechconnect$/),
+      fee: { amount: 0, is_free: true },
+    });
 
     const programs = await request(app).get("/api/partner/v1/programs").set("X-API-Key", secret).expect(200);
-    expect(programs.body.data).toEqual([]);
+    expect(programs.body.data[0]).toMatchObject({
+      title: "Full-Stack Web Course",
+      description: expect.any(String),
+      eligibility: "Age 18-35, intermediate or above",
+      duration: "6 months",
+      application_deadline: day(10),
+      organization_name: "DigiBizz Balochistan",
+      apply_link: expect.stringMatching(/\/apply\?ref=industechconnect$/),
+    });
 
     const expired = await request(app).get("/api/partner/v1/jobs?status=expired").set("X-API-Key", secret).expect(200);
     expect(expired.body.data.map((j: { title: string }) => j.title)).toEqual(["Old Role"]);

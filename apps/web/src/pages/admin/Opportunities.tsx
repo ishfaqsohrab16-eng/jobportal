@@ -18,8 +18,8 @@ import {
 } from "@/store/api";
 import { useDebouncedValue, useToast, useUrlFilters } from "@/hooks";
 import { useShellHeader } from "@/components/layout/ShellContext";
-import { TypeBadge } from "@/components/opportunity";
-import { Avatar, Badge, ButtonLink, ConfirmDialog, EmptyState, Input, Pagination, Segmented, Select, Skeleton } from "@/components/ui";
+import { PublisherMark, TypeBadge } from "@/components/opportunity";
+import { Badge, ButtonLink, ConfirmDialog, EmptyState, Input, Pagination, Segmented, Select, Skeleton } from "@/components/ui";
 import { errorMessage } from "@/lib/errors";
 import { cn } from "@/lib/cn";
 
@@ -166,7 +166,7 @@ export default function Opportunities() {
       <div className="panel p-4 sm:p-5">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <div className="min-w-0 flex-1 basis-56">
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search title, organization, skill" leading={<MagnifyingGlass className="size-4" />} className="h-10" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search title, skill or field" leading={<MagnifyingGlass className="size-4" />} className="h-10" />
           </div>
           <Segmented
             value={(values.type || "all") as "all"}
@@ -220,14 +220,14 @@ export default function Opportunities() {
                   className="grid grid-cols-[1fr_auto] items-center gap-3 px-2 py-3.5 text-sm lg:grid-cols-[2.4fr_1fr_0.9fr_1.1fr_0.8fr_0.6fr_40px] lg:gap-4 lg:px-4"
                 >
                   <Link to={`/admin/opportunities/${o.id}`} className="flex min-w-0 items-center gap-3">
-                    <Avatar name={o.organization.name} src={o.organization.logoUrl} size={36} />
+                    <PublisherMark size={36} />
                     <span className="min-w-0">
                       <span className="flex items-center gap-2">
                         <span className="truncate font-semibold hover:text-brand">{o.title}</span>
                         {o.featured && <Badge tone="accent">★</Badge>}
                       </span>
                       <span className="block truncate text-xs text-muted">
-                        {o.organization.name}
+                        {o.field || OPPORTUNITY_TYPE_META[o.type].label}
                         {!o.isITRelated && " · non-IT"}
                       </span>
                     </span>

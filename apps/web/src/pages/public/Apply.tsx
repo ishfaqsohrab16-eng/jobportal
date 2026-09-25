@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle, IdentificationBadge, NotePencil, PaperPlaneTilt, Paperclip } from "@phosphor-icons/react";
-import { applySchema, deadlineLabel, OPPORTUNITY_TYPE_META } from "@digibizz/jobs-shared";
+import { applySchema, deadlineLabel, DIGIBIZZ, OPPORTUNITY_TYPE_META } from "@digibizz/jobs-shared";
 import { useApplyMutation, useOpportunityQuery } from "@/store/api";
 import { useAuth, useToast } from "@/hooks";
 import { useShellHeader } from "@/components/layout/ShellContext";
 import { ResumeDropzone } from "@/components/ResumeDropzone";
 import { Confetti } from "@/components/motion/Confetti";
-import { Avatar, Button, ButtonLink, EmptyState, Field, Input, Skeleton, Textarea } from "@/components/ui";
+import { Button, ButtonLink, EmptyState, Field, Input, Skeleton, Textarea } from "@/components/ui";
+import { PublisherMark } from "@/components/opportunity";
 import { cn } from "@/lib/cn";
 import { errorMessage, fieldErrors } from "@/lib/errors";
 import { ease } from "@/lib/motion";
@@ -76,7 +77,7 @@ export default function Apply() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
 
-  useShellHeader({ title: o ? `Apply · ${o.title}` : "Apply", subtitle: o?.organization.name }, [o?.id]);
+  useShellHeader({ title: o ? `Apply · ${o.title}` : "Apply", subtitle: DIGIBIZZ.name }, [o?.id]);
 
   // The session may resolve after first render: prefill contact details once it does.
   useEffect(() => {
@@ -88,10 +89,6 @@ export default function Apply() {
   if (!o) return <div className="p-6"><EmptyState title="Opportunity not found" action={<ButtonLink to="/jobs">Browse jobs</ButtonLink>} /></div>;
   if (user.role === "admin") return <div className="p-6"><EmptyState title="Admins can't apply" body="Sign in with a candidate account to apply." /></div>;
   if (o.viewer?.applicationStatus && !done) return <Navigate to="/me" replace />;
-  if (o.externalApplyUrl) {
-    window.location.href = o.externalApplyUrl;
-    return null;
-  }
 
   const source = params.get("ref") || "direct";
   const go = (to: number) => {
@@ -145,7 +142,7 @@ export default function Apply() {
           </motion.span>
           <h2 className="mt-6 text-3xl font-bold">Application sent!</h2>
           <p className="mt-3 text-muted">
-            {o.organization.name} will review your application for <b className="text-ink">{o.title}</b>. We’ll update the status in your dashboard.
+            {DIGIBIZZ.name} will review your application for <b className="text-ink">{o.title}</b>. We’ll update the status in your dashboard.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-2">
             <ButtonLink to="/me" variant="primary" chip={<ArrowRight className="size-3.5" />}>
@@ -167,11 +164,11 @@ export default function Apply() {
       </Link>
       <div className="panel overflow-hidden">
         <div className="flex items-center gap-4 border-b border-line p-5">
-          <Avatar name={o.organization.name} src={o.organization.logoUrl} size={48} />
+          <PublisherMark size={48} />
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold">{o.title}</p>
             <p className="truncate text-sm text-muted">
-              {o.organization.name} · {deadlineLabel(o.deadline)}
+              {DIGIBIZZ.name} · {deadlineLabel(o.deadline)}
             </p>
           </div>
           {source !== "direct" && <span className="hidden rounded-full bg-violet-soft px-2.5 py-1 text-xs font-medium text-violet sm:block">via {source}</span>}
@@ -221,7 +218,7 @@ export default function Apply() {
                         maxLength={4000}
                         value={form.coverLetter}
                         onChange={(e) => setForm({ ...form, coverLetter: e.target.value })}
-                        placeholder={`Tell ${o.organization.name} why you're a great fit…`}
+                        placeholder={`Tell ${DIGIBIZZ.name} why you're a great fit…`}
                       />
                     )}
                   </Field>

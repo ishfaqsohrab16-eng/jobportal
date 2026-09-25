@@ -50,15 +50,6 @@ export interface OrganizationSummary {
   verified: boolean;
 }
 
-export interface OrganizationDTO extends OrganizationSummary {
-  website: string;
-  city: string;
-  country: string;
-  about: string;
-  openCount?: number;
-  createdAt: string;
-}
-
 export interface OpportunityDTO {
   id: string;
   type: OpportunityType;
@@ -99,7 +90,6 @@ export interface OpportunityDTO {
   benefits: string[];
   startDate: string | null;
   deadline: string | null;
-  externalApplyUrl: string;
   status: OpportunityStatus;
   publicStatus: PublicStatus;
   featured: boolean;
@@ -144,7 +134,6 @@ export interface ApiKeyDTO {
 
 export interface PublicStats {
   open: Record<OpportunityType, number>;
-  organizations: number;
   cities: number;
   itShare: number;
 }

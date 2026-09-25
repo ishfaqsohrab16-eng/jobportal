@@ -23,8 +23,8 @@ import {
 } from "@phosphor-icons/react";
 import {
   APPLICATION_STATUS_LABEL,
-  CATEGORY_LABEL,
   daysLeft,
+  DIGIBIZZ,
   deadlineLabel,
   EMPLOYMENT_TYPE_LABEL,
   formatAge,
@@ -40,8 +40,8 @@ import { useOpportunityQuery, useSimilarQuery } from "@/store/api";
 import { useToast } from "@/hooks";
 import { useShellHeader } from "@/components/layout/ShellContext";
 import { Reveal, Stagger } from "@/components/motion";
-import { CategoryBadge, DeadlinePill, Fact, OpportunityCard, SaveButton, TYPE_TINT, TypeBadge } from "@/components/opportunity";
-import { Avatar, Badge, Button, ButtonLink, EmptyState, Skeleton } from "@/components/ui";
+import { DeadlinePill, Fact, OfficialBadge, OpportunityCard, PublisherMark, SaveButton, TYPE_TINT, TypeBadge } from "@/components/opportunity";
+import { Badge, Button, ButtonLink, EmptyState, Skeleton } from "@/components/ui";
 import { errorStatus } from "@/lib/errors";
 import { ease, fadeUp } from "@/lib/motion";
 
@@ -95,15 +95,6 @@ function ApplyCta({ o, block }: { o: OpportunityDTO; block?: boolean }) {
       </Button>
     );
   }
-  if (o.externalApplyUrl) {
-    return (
-      <motion.a whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} href={o.externalApplyUrl} target="_blank" rel="noopener noreferrer" className={block ? "block" : "inline-block"}>
-        <Button variant="primary" size="lg" block={block} chip={<ArrowSquareOut className="size-4" />} tabIndex={-1}>
-          Apply on {o.organization.name.split(" ")[0]}’s site
-        </Button>
-      </motion.a>
-    );
-  }
   return (
     <ButtonLink to={`/opportunities/${o.slug}/apply${search}`} variant="primary" size="lg" block={block} chip={<ArrowUpRight weight="bold" className="size-4" />}>
       Apply now
@@ -142,7 +133,7 @@ export default function OpportunityDetail() {
 
   useShellHeader(
     o
-      ? { title: o.title, subtitle: `${o.organization.name} · ${OPPORTUNITY_TYPE_META[o.type].label}` }
+      ? { title: o.title, subtitle: `${DIGIBIZZ.name} · ${OPPORTUNITY_TYPE_META[o.type].label}` }
       : { title: isLoading ? "Loading…" : "Opportunity" },
     [o?.id],
   );
@@ -192,7 +183,7 @@ export default function OpportunityDetail() {
     { icon: <MapPin className="size-4.5" />, label: "Location", value: formatLocation(o) },
     { icon: <UsersThree className="size-4.5" />, label: isLearning ? "Seats" : "Positions", value: o.positions },
     isLearning
-      ? { icon: <CurrencyCircleDollar className="size-4.5" />, label: "Fee", value: o.fee === 0 ? "Free" : o.fee != null ? `${o.salaryCurrency} ${o.fee.toLocaleString()}` : "Contact organization" }
+      ? { icon: <CurrencyCircleDollar className="size-4.5" />, label: "Fee", value: o.fee === 0 ? "Free" : o.fee != null ? `${o.salaryCurrency} ${o.fee.toLocaleString()}` : "Contact DigiBizz" }
       : { icon: <CurrencyCircleDollar className="size-4.5" />, label: o.type === "internship" ? "Stipend" : "Salary", value: formatSalary(o) },
     o.employmentType && { icon: <Briefcase className="size-4.5" />, label: "Employment", value: EMPLOYMENT_TYPE_LABEL[o.employmentType] },
     (o.duration || o.contractDuration) && { icon: <HourglassMedium className="size-4.5" />, label: o.contractDuration ? "Contract" : "Duration", value: o.contractDuration || o.duration },
@@ -217,25 +208,19 @@ export default function OpportunityDetail() {
       >
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
           <motion.div initial={{ scale: 0.6, rotate: -8, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}>
-            <Avatar name={o.organization.name} src={o.organization.logoUrl} size={72} className="rounded-2xl" />
+            <PublisherMark size={72} />
           </motion.div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap gap-1.5">
               <TypeBadge type={o.type} />
-              <CategoryBadge category={o.category} />
+              <OfficialBadge />
               {o.isITRelated && <Badge tone="info">IT & Tech</Badge>}
               {o.field && <Badge>{o.field}</Badge>}
               {o.publicStatus !== "open" && <Badge tone="danger">{o.publicStatus === "expired" ? "Expired" : "Closed"}</Badge>}
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{o.title}</h1>
             <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px] text-muted">
-              {o.organization.slug ? (
-                <Link to={`/organizations/${o.organization.slug}`} className="font-medium text-ink-soft hover:text-brand">
-                  {o.organization.name}
-                </Link>
-              ) : (
-                o.organization.name
-              )}
+              <span className="font-medium text-ink-soft">{DIGIBIZZ.name}</span>
               <span className="flex items-center gap-1">
                 <MapPin className="size-4" /> {formatLocation(o)}
               </span>
@@ -315,7 +300,7 @@ export default function OpportunityDetail() {
               ))}
             </div>
             <p className="mt-4 text-center text-xs text-muted">
-              {CATEGORY_LABEL[o.category]} · {deadlineLabel(o.deadline)}
+              Offered by {DIGIBIZZ.name} · {deadlineLabel(o.deadline)}
             </p>
           </div>
         </aside>

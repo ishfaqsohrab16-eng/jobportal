@@ -1,45 +1,28 @@
 import {
   derivePublicStatus,
+  DIGIBIZZ,
   type ApiKeyDTO,
   type ApplicationDTO,
   type ApplicationStatus,
   type OpportunityDTO,
-  type OrganizationDTO,
   type OrganizationSummary,
   type UserDTO,
 } from "@digibizz/jobs-shared";
 import { Types } from "mongoose";
-import type { ApiKeyDoc, ApplicationDoc, Opportunity, OpportunityDoc, Organization, OrganizationDoc, UserDoc } from "./models";
+import type { ApiKeyDoc, ApplicationDoc, Opportunity, OpportunityDoc, UserDoc } from "./models";
 
 const iso = (d: Date | null | undefined) => (d ? new Date(d).toISOString() : null);
 const isoDay = (d: Date | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 
-export const logoUrl = (logo: string | null | undefined) => (logo ? `/api/files/logos/${logo}` : null);
-
-type OrgLike = (Organization & { _id: Types.ObjectId }) | OrganizationDoc;
-
-export function toOrganizationSummary(o: OrgLike): OrganizationSummary {
-  return {
-    id: String(o._id),
-    name: o.name,
-    slug: o.slug,
-    category: o.category,
-    logoUrl: logoUrl(o.logo),
-    verified: o.verified,
-  };
-}
-
-export function toOrganizationDTO(o: OrgLike, openCount?: number): OrganizationDTO {
-  return {
-    ...toOrganizationSummary(o),
-    website: o.website,
-    city: o.city,
-    country: o.country,
-    about: o.about,
-    openCount,
-    createdAt: iso(o.createdAt)!,
-  };
-}
+/** Every opportunity on this portal is published by DigiBizz Balochistan. */
+export const DIGIBIZZ_ORG: OrganizationSummary = {
+  id: DIGIBIZZ.slug,
+  name: DIGIBIZZ.name,
+  slug: DIGIBIZZ.slug,
+  category: DIGIBIZZ.category,
+  logoUrl: "/logo.svg",
+  verified: true,
+};
 
 export function toUserDTO(u: UserDoc): UserDTO {
   return {
@@ -64,24 +47,17 @@ export function toUserDTO(u: UserDoc): UserDTO {
 
 type OppLike = OpportunityDoc | (Opportunity & { _id: Types.ObjectId });
 
-/** Opportunity with its organization populated. Falls back to the denormalised name if the org is gone. */
 export function toOpportunityDTO(
   o: OppLike,
   viewer?: { saved: boolean; applicationStatus: ApplicationStatus | null },
 ): OpportunityDTO {
-  const org = o.organization as unknown;
-  const organization: OrganizationSummary =
-    org && typeof org === "object" && "name" in (org as object)
-      ? toOrganizationSummary(org as OrgLike)
-      : { id: String(org), name: o.organizationName, slug: "", category: o.category, logoUrl: null, verified: false };
-
   return {
     id: String(o._id),
     type: o.type,
     slug: o.slug,
     title: o.title,
-    organization,
-    category: o.category,
+    organization: DIGIBIZZ_ORG,
+    category: DIGIBIZZ.category,
     isITRelated: o.isITRelated,
     field: o.field,
     summary: o.summary,
@@ -115,7 +91,6 @@ export function toOpportunityDTO(
     benefits: o.benefits,
     startDate: isoDay(o.startDate),
     deadline: isoDay(o.deadline),
-    externalApplyUrl: o.externalApplyUrl,
     status: o.status,
     publicStatus: derivePublicStatus(o.status, o.deadline),
     featured: o.featured,
@@ -151,9 +126,9 @@ export function toApplicationDTO(a: ApplicationDoc, opts: { withCandidate?: bool
           type: opp.type,
           deadline: isoDay(opp.deadline),
           publicStatus: derivePublicStatus(opp.status, opp.deadline),
-          organizationName: opp.organizationName,
+          organizationName: DIGIBIZZ.name,
         }
-      : { id: String(opp), slug: "", title: "Removed opportunity", type: "job", deadline: null, publicStatus: "closed", organizationName: "" },
+      : { id: String(opp), slug: "", title: "Removed opportunity", type: "job", deadline: null, publicStatus: "closed", organizationName: DIGIBIZZ.name },
     ...(opts.withCandidate && user && typeof user === "object" && "email" in user
       ? {
           candidate: {

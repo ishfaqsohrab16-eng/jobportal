@@ -201,9 +201,9 @@ export default function ApiKeys() {
     subtitle: "Keys for IndusTech Connect and other partner portals",
     actions: (
       <>
-        <ButtonLink to="/developers" size="md" className="hidden md:inline-flex">
-          Docs
-        </ButtonLink>
+        <a href="/api/partner/v1/openapi.json" target="_blank" rel="noreferrer" className="hidden h-10 items-center rounded-xl border border-line bg-surface-2 px-4 text-sm font-medium hover:border-line-strong md:inline-flex">
+          API spec
+        </a>
         <Button variant="primary" onClick={() => setOpen(true)} chip={<Plus weight="bold" className="size-3.5" />}>
           New key
         </Button>

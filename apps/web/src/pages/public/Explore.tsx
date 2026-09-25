@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowsDownUp, Funnel, MagnifyingGlass, X } from "@phosphor-icons/react";
 import {
-  CATEGORIES,
-  CATEGORY_LABEL,
   EMPLOYMENT_TYPES,
   EMPLOYMENT_TYPE_LABEL,
   OPPORTUNITY_TYPE_META,
@@ -19,7 +17,7 @@ import { Stagger } from "@/components/motion";
 import { Badge, Button, Drawer, EmptyState, Input, Label, Pagination, Segmented, Select, Switch } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
-const KEYS = ["q", "category", "city", "workMode", "employmentType", "field", "it", "closingSoon", "sort", "page"] as const;
+const KEYS = ["q", "city", "workMode", "employmentType", "field", "it", "closingSoon", "sort", "page"] as const;
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -41,19 +39,6 @@ function Filters({ type, values, set }: { type: OpportunityType; values: Record<
   const { data: facets } = useFacetsQuery(type);
   return (
     <div className="space-y-6">
-      <div>
-        <Label>Offered by</Label>
-        <div className="flex flex-wrap gap-1.5">
-          <Chip active={!values.category} onClick={() => set({ category: "" })}>
-            All
-          </Chip>
-          {CATEGORIES.map((c) => (
-            <Chip key={c} active={values.category === c} onClick={() => set({ category: values.category === c ? "" : c })}>
-              {CATEGORY_LABEL[c]}
-            </Chip>
-          ))}
-        </div>
-      </div>
       <div>
         <Label>City</Label>
         <Select value={values.city} onChange={(e) => set({ city: e.target.value })}>

@@ -2,27 +2,24 @@ import { useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  Bank,
   BookmarkSimple,
   Briefcase,
-  Buildings,
   Chalkboard,
   Clock,
-  Globe,
   GraduationCap,
   MapPin,
+  SealCheck,
   Student,
   UsersThree,
 } from "@phosphor-icons/react";
 import {
-  CATEGORY_LABEL,
   daysLeft,
+  DIGIBIZZ,
   deadlineLabel,
   EMPLOYMENT_TYPE_LABEL,
   formatLocation,
   formatSalary,
   OPPORTUNITY_TYPE_META,
-  type Category,
   type OpportunityDTO,
   type OpportunityType,
 } from "@digibizz/jobs-shared";
@@ -30,7 +27,8 @@ import { useAuth, usePointerGlow, useToast } from "@/hooks";
 import { useToggleSaveMutation } from "@/store/api";
 import { cn } from "@/lib/cn";
 import { fadeUp } from "@/lib/motion";
-import { Avatar, Badge, Skeleton } from "@/components/ui";
+import { Badge, Skeleton } from "@/components/ui";
+import { LogoMark } from "@/components/brand/Logo";
 
 export const TYPE_TINT: Record<OpportunityType, { var: string; tone: "brand" | "teal" | "violet" | "accent" }> = {
   job: { var: "var(--brand)", tone: "brand" },
@@ -46,21 +44,20 @@ export const TYPE_ICON: Record<OpportunityType, (cls?: string) => ReactNode> = {
   training: (c = "size-5") => <Chalkboard className={c} />,
 };
 
-const CATEGORY_ICON: Record<Category, ReactNode> = {
-  government: <Bank className="size-3.5" />,
-  international: <Globe className="size-3.5" />,
-  private: <Buildings className="size-3.5" />,
-};
-
 export function TypeBadge({ type }: { type: OpportunityType }) {
   return <Badge tone={TYPE_TINT[type].tone}>{OPPORTUNITY_TYPE_META[type].label}</Badge>;
 }
 
-export function CategoryBadge({ category }: { category: Category }) {
+/** Every opportunity is published by DigiBizz Balochistan; this is its mark. */
+export function PublisherMark({ size = 40, className }: { size?: number; className?: string }) {
+  return <LogoMark size={size} animate={false} className={className} />;
+}
+
+export function OfficialBadge() {
   return (
-    <Badge>
-      {CATEGORY_ICON[category]}
-      {CATEGORY_LABEL[category]}
+    <Badge tone="brand">
+      <SealCheck weight="fill" className="size-3.5" />
+      Official {DIGIBIZZ.name.split(" ")[0]}
     </Badge>
   );
 }
@@ -171,11 +168,11 @@ export function OpportunityCard({ o, index = 0 }: { o: OpportunityDTO; index?: n
           style={{ ["--tint" as string]: tint }}
         >
           <div className="flex items-start gap-3">
-            <Avatar name={o.organization.name} src={o.organization.logoUrl} size={44} />
+            <PublisherMark size={44} />
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 truncate text-[13px] text-muted">
-                {o.organization.name}
-                {o.organization.verified && <span title="Verified" className="size-1.5 rounded-full bg-brand" />}
+                {DIGIBIZZ.name}
+                <SealCheck weight="fill" aria-label="Official" className="size-3.5 shrink-0 text-brand" />
               </p>
               <h3 className="mt-0.5 line-clamp-2 text-[16.5px] font-semibold leading-snug tracking-tight transition-colors group-hover:text-brand">{o.title}</h3>
             </div>
@@ -184,7 +181,6 @@ export function OpportunityCard({ o, index = 0 }: { o: OpportunityDTO; index?: n
 
           <div className="flex flex-wrap gap-1.5">
             <TypeBadge type={o.type} />
-            <CategoryBadge category={o.category} />
             {o.employmentType && <Badge>{EMPLOYMENT_TYPE_LABEL[o.employmentType]}</Badge>}
             {o.featured && (
               <Badge tone="accent" dot>

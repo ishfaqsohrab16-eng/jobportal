@@ -54,8 +54,7 @@ meRouter.delete("/resume", async (req, res) => {
 
 meRouter.get("/saved", async (req, res) => {
   const docs = await OpportunityModel.find({ _id: { $in: currentUser(req).saved }, status: { $ne: "draft" } })
-    .sort({ deadline: 1 })
-    .populate("organization");
+    .sort({ deadline: 1 });
   res.json(docs.map((d) => toOpportunityDTO(d, { saved: true, applicationStatus: null })));
 });
 
@@ -86,7 +85,6 @@ meRouter.post("/applications/:id", requireRole("candidate"), async (req, res) =>
   if (derivePublicStatus(opp.status, opp.deadline) !== "open") {
     throw new HttpError(410, "closed", "This opportunity is no longer accepting applications");
   }
-  if (opp.externalApplyUrl) throw badRequest("Applications for this opportunity are taken on the organization's own website");
   if (!user.resume) throw badRequest("Upload your resume before applying", { resume: "Required" });
   if (await ApplicationModel.exists({ opportunity: opp._id, user: user._id })) {
     throw conflict("You have already applied for this opportunity");

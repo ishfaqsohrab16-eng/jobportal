@@ -53,7 +53,7 @@ function PasswordCard() {
 
 export default function Profile() {
   const { user } = useAuth();
-  useShellHeader({ title: "Profile", subtitle: "What organizations see when you apply" });
+  useShellHeader({ title: "Profile", subtitle: "What DigiBizz sees when you apply" });
   const [save, { isLoading }] = useUpdateProfileMutation();
   const toast = useToast();
   const { register, handleSubmit, control, reset, formState } = useForm<ProfileInput>({ resolver: zodResolver(profileSchema) });

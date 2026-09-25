@@ -95,20 +95,18 @@ for (const c of COLLECTIONS) {
     const q = query(req, listQuery);
     const and: FilterQuery<Opportunity>[] = [{ type: c.type }, statusFilter(q.status)];
     if (c.itOnly === "always" || q.it_only === "true") and.push({ isITRelated: true });
-    if (q.category) and.push({ category: q.category });
     if (q.city) and.push({ city: new RegExp(`^${escapeRegex(q.city)}$`, "i") });
     if (q.updated_since) and.push({ updatedAt: { $gte: new Date(q.updated_since) } });
     if (q.q) {
       const rx = new RegExp(escapeRegex(q.q), "i");
-      and.push({ $or: [{ title: rx }, { organizationName: rx }, { skills: rx }, { field: rx }] });
+      and.push({ $or: [{ title: rx }, { skills: rx }, { field: rx }] });
     }
     const filter = { $and: and };
     const [docs, total] = await Promise.all([
       OpportunityModel.find(filter)
         .sort({ updatedAt: -1, _id: -1 })
         .skip((q.page - 1) * q.limit)
-        .limit(q.limit)
-        .populate("organization"),
+        .limit(q.limit),
       OpportunityModel.countDocuments(filter),
     ]);
     const totalPages = Math.max(1, Math.ceil(total / q.limit));
@@ -138,7 +136,7 @@ for (const c of COLLECTIONS) {
       status: { $in: ["open", "closed"] },
       ...(c.itOnly === "always" ? { isITRelated: true } : {}),
       ...(mongoose.isValidObjectId(id) ? { _id: id } : { slug: id }),
-    }).populate("organization");
+    });
     if (!doc) throw notFound(c.type[0]!.toUpperCase() + c.type.slice(1));
     res.json({ data: c.serialize(doc, req.apiKey!.partnerSlug) });
   });

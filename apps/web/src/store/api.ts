@@ -11,8 +11,6 @@ import type {
   OpportunityInput,
   OpportunityStatus,
   OpportunityType,
-  OrganizationDTO,
-  OrganizationInput,
   Paginated,
   ProfileInput,
   PublicStats,
@@ -29,14 +27,13 @@ const clean = (p: Params = {}) =>
 export interface Facets {
   cities: { value: string; count: number }[];
   fields: { value: string; count: number }[];
-  categories: { value: string; count: number }[];
   workModes: { value: string; count: number }[];
 }
 
 export const api = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({ baseUrl: "/api", credentials: "include" }),
-  tagTypes: ["Me", "Opportunity", "Organization", "Saved", "Application", "ApiKey", "Stats", "Overview", "Candidate"],
+  tagTypes: ["Me", "Opportunity", "Saved", "Application", "ApiKey", "Stats", "Overview", "Candidate"],
   endpoints: (b) => ({
     /* ------------------------------------------------------------ public */
     stats: b.query<PublicStats, void>({ query: () => "/stats", providesTags: ["Stats"] }),
@@ -52,11 +49,6 @@ export const api = createApi({
       providesTags: (r) => (r ? [{ type: "Opportunity", id: r.id }, "Me"] : []),
     }),
     similar: b.query<OpportunityDTO[], string>({ query: (slug) => `/opportunities/${slug}/similar` }),
-    organizations: b.query<OrganizationDTO[], void>({ query: () => "/organizations", providesTags: ["Organization"] }),
-    organization: b.query<{ organization: OrganizationDTO; opportunities: OpportunityDTO[] }, string>({
-      query: (slug) => `/organizations/${slug}`,
-      providesTags: ["Organization"],
-    }),
 
     /* -------------------------------------------------------------- auth */
     me: b.query<{ user: UserDTO }, void>({ query: () => "/auth/me", providesTags: ["Me"] }),
@@ -131,23 +123,6 @@ export const api = createApi({
       query: (id) => ({ url: `/admin/opportunities/${id}`, method: "DELETE" }),
       invalidatesTags: ["Opportunity", "Stats", "Overview"],
     }),
-    adminOrganizations: b.query<OrganizationDTO[], void>({ query: () => "/admin/organizations", providesTags: ["Organization"] }),
-    saveOrganization: b.mutation<OrganizationDTO, { id?: string; body: OrganizationInput }>({
-      query: ({ id, body }) => ({ url: id ? `/admin/organizations/${id}` : "/admin/organizations", method: id ? "PUT" : "POST", body }),
-      invalidatesTags: ["Organization", "Opportunity"],
-    }),
-    uploadLogo: b.mutation<OrganizationDTO, { id: string; file: File }>({
-      query: ({ id, file }) => {
-        const body = new FormData();
-        body.append("logo", file);
-        return { url: `/admin/organizations/${id}/logo`, method: "POST", body };
-      },
-      invalidatesTags: ["Organization", "Opportunity"],
-    }),
-    deleteOrganization: b.mutation<void, string>({
-      query: (id) => ({ url: `/admin/organizations/${id}`, method: "DELETE" }),
-      invalidatesTags: ["Organization"],
-    }),
     adminApplications: b.query<Paginated<ApplicationDTO>, Params>({
       query: (params) => ({ url: "/admin/applications", params: clean(params) }),
       providesTags: ["Application"],
@@ -182,8 +157,6 @@ export const {
   useOpportunitiesQuery,
   useOpportunityQuery,
   useSimilarQuery,
-  useOrganizationsQuery,
-  useOrganizationQuery,
   useMeQuery,
   useLoginMutation,
   useRegisterMutation,
@@ -204,10 +177,6 @@ export const {
   useSetOpportunityStatusMutation,
   useDuplicateOpportunityMutation,
   useDeleteOpportunityMutation,
-  useAdminOrganizationsQuery,
-  useSaveOrganizationMutation,
-  useUploadLogoMutation,
-  useDeleteOrganizationMutation,
   useAdminApplicationsQuery,
   useSetApplicationStatusMutation,
   useCandidatesQuery,

@@ -30,11 +30,12 @@ export function buildOpenApi() {
     type_label: str(),
     title: str("Job title / internship name / program or training name"),
     slug: str(),
-    category: str("Who is offering it", { enum: ["Government", "International", "Private"] }),
+    category: str("Job category. Always Government: DigiBizz Balochistan is the only publisher.", { enum: ["Government", "International", "Private"] }),
+    organization_name: str("Always \"DigiBizz Balochistan\""),
     organization: {
       type: "object",
       properties: {
-        name: str("Employer / organization name"),
+        name: str("Employer / organization name - always DigiBizz Balochistan"),
         type: str(undefined, { enum: ["Government", "International", "Private"] }),
         website: nstr(),
         logo_url: nstr(),
@@ -57,9 +58,9 @@ export function buildOpenApi() {
     description: str("Full description (plain text, newlines preserved)"),
     eligibility: nstr(),
     application_deadline: { type: ["string", "null"], format: "date", description: "Last day applications are accepted (inclusive). null = rolling." },
-    apply_link: str("Send users here to apply. Carries ?ref=<partner> so applications are attributed to you.", { format: "uri" }),
+    apply_link: str("DigiBizz application page for this item. Carries ?ref=<partner> so applications are attributed to you.", { format: "uri" }),
     source_url: str("Public detail page on DigiBizz Jobs", { format: "uri" }),
-    status: str("open = accepting applications; expired = deadline passed; closed = closed by the organization", {
+    status: str("open = accepting applications; expired = deadline passed; closed = closed by DigiBizz", {
       enum: ["open", "closed", "expired"],
     }),
     posted_at: { type: ["string", "null"], format: "date-time" },
@@ -170,9 +171,8 @@ export function buildOpenApi() {
       description: "Only items changed at or after this ISO date/date-time. Use for incremental sync.",
       schema: { type: "string" },
     },
-    { name: "category", in: "query", schema: { type: "string", enum: ["government", "international", "private"] } },
     { name: "city", in: "query", schema: { type: "string" } },
-    { name: "q", in: "query", description: "Keyword search on title, organization, skills and field", schema: { type: "string" } },
+    { name: "q", in: "query", description: "Keyword search on title, skills and field", schema: { type: "string" } },
   ];
   const itOnly = {
     name: "it_only",
@@ -222,7 +222,7 @@ export function buildOpenApi() {
       title: "DigiBizz Jobs Partner API",
       version: "1.0.0",
       description:
-        "Read-only feed of jobs, internships, programs/courses and trainings published on DigiBizz Jobs. " +
+        "Read-only feed of DigiBizz Balochistan's own jobs, internships, programs/courses and trainings. " +
         "Authenticate with the X-API-Key header. The jobs collection only returns IT / IT-related jobs.",
     },
     servers: [{ url: `${config.publicWebUrl}/api/partner/v1` }],

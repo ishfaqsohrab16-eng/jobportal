@@ -5,10 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "motion/react";
 import { ArrowLeft, Check, Eye, FloppyDisk, RocketLaunch } from "@phosphor-icons/react";
 import {
-  CATEGORIES,
-  CATEGORY_LABEL,
   CITIES,
   derivePublicStatus,
+  DIGIBIZZ,
   EMPLOYMENT_TYPES,
   EMPLOYMENT_TYPE_LABEL,
   FIELDS,
@@ -25,10 +24,10 @@ import {
   type OpportunityInput,
   type OpportunityStatus,
 } from "@digibizz/jobs-shared";
-import { useAdminOpportunityQuery, useAdminOrganizationsQuery, useSaveOpportunityMutation } from "@/store/api";
+import { useAdminOpportunityQuery, useSaveOpportunityMutation } from "@/store/api";
 import { useToast } from "@/hooks";
 import { useShellHeader } from "@/components/layout/ShellContext";
-import { OpportunityCard, TYPE_ICON, TYPE_TINT } from "@/components/opportunity";
+import { OpportunityCard, PublisherMark, TYPE_ICON, TYPE_TINT } from "@/components/opportunity";
 import { Button, ButtonLink, Field, Input, LinesInput, Select, Skeleton, Switch, TagInput, Textarea } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { errorMessage, fieldErrors } from "@/lib/errors";
@@ -36,8 +35,6 @@ import { errorMessage, fieldErrors } from "@/lib/errors";
 const EMPTY: OpportunityInput = {
   type: "job",
   title: "",
-  organizationId: "",
-  category: "private",
   isITRelated: true,
   field: "",
   summary: "",
@@ -71,14 +68,14 @@ const EMPTY: OpportunityInput = {
   benefits: [],
   startDate: "",
   deadline: "",
-  externalApplyUrl: "",
   status: "draft",
   featured: false,
 };
 
 function toInput(o: OpportunityDTO): OpportunityInput {
-  const { id: _i, slug: _s, organization, publicStatus: _p, views: _v, applicationsCount: _a, publishedAt: _pa, createdAt: _c, updatedAt: _u, viewer: _vw, ...rest } = o;
-  return { ...rest, organizationId: organization.id, startDate: o.startDate ?? "", deadline: o.deadline ?? "" };
+  const { id: _i, slug: _s, organization: _o, publicStatus: _p, views: _v, applicationsCount: _a, publishedAt: _pa, createdAt: _c, updatedAt: _u, viewer: _vw, ...rest } = o;
+  const { category: _cat, ...input } = rest;
+  return { ...input, startDate: o.startDate ?? "", deadline: o.deadline ?? "" };
 }
 
 const SECTIONS = [
@@ -87,7 +84,7 @@ const SECTIONS = [
   { id: "requirements", label: "Requirements" },
   { id: "compensation", label: "Compensation" },
   { id: "location", label: "Location" },
-  { id: "dates", label: "Dates & apply" },
+  { id: "dates", label: "Dates" },
   { id: "publish", label: "Publishing" },
 ];
 
@@ -133,11 +130,6 @@ export default function OpportunityEditor() {
   const navigate = useNavigate();
   const toast = useToast();
   const { data: existing, isLoading } = useAdminOpportunityQuery(id ?? "", { skip: isNew });
-  const { data: orgs } = useAdminOrganizationsQuery();
-  const digiOrg = useMemo(
-    () => (orgs ?? []).find((o) => o.name.toLowerCase().includes("digibizz")) ?? (orgs ?? [])[0] ?? null,
-    [orgs],
-  );
   const [save, { isLoading: saving }] = useSaveOpportunityMutation();
 
   const form = useForm<OpportunityInput>({ resolver: zodResolver(opportunitySchema), defaultValues: EMPTY, mode: "onTouched" });
@@ -150,18 +142,8 @@ export default function OpportunityEditor() {
     if (existing) reset(toInput(existing));
   }, [existing, reset]);
 
-  useEffect(() => {
-    if (!digiOrg) return;
-    if (!values.organizationId) {
-      setValue("organizationId", digiOrg.id, { shouldDirty: true });
-    }
-    if (!values.category && digiOrg.category) {
-      setValue("category", digiOrg.category, { shouldDirty: true });
-    }
-  }, [digiOrg, setValue, values.category, values.organizationId]);
   const type = values.type ?? "job";
   const isLearning = type === "program" || type === "training";
-  const org = orgs?.find((o) => o.id === values.organizationId);
   const active = useScrollSpy(useMemo(() => SECTIONS.map((s) => s.id), []));
 
   useShellHeader(
@@ -195,9 +177,8 @@ export default function OpportunityEditor() {
       id: "preview",
       slug: existing?.slug ?? "preview",
       title: values.title || "Untitled opportunity",
-      organization: org
-        ? { id: org.id, name: org.name, slug: org.slug, category: org.category, logoUrl: org.logoUrl, verified: org.verified }
-        : { id: "", name: "Organization", slug: "", category: "private", logoUrl: null, verified: false },
+      organization: { id: DIGIBIZZ.slug, name: DIGIBIZZ.name, slug: DIGIBIZZ.slug, category: DIGIBIZZ.category, logoUrl: "/logo.svg", verified: true },
+      category: DIGIBIZZ.category,
       employmentType: values.employmentType ?? null,
       startDate: values.startDate || null,
       deadline: values.deadline || null,
@@ -208,7 +189,7 @@ export default function OpportunityEditor() {
       createdAt: "",
       updatedAt: "",
     } as OpportunityDTO;
-  }, [values, org, existing?.slug]);
+  }, [values, existing?.slug]);
 
   if (!isNew && isLoading) return <div className="space-y-4 p-6"><Skeleton className="h-40" /><Skeleton className="h-96" /></div>;
 
@@ -249,7 +230,7 @@ export default function OpportunityEditor() {
         </nav>
 
         <form className="min-w-0 space-y-5" onSubmit={(ev) => ev.preventDefault()}>
-          <Section id="basics" title="Basics" subtitle="What is it and who is offering it?" index={0}>
+          <Section id="basics" title="Basics" subtitle={`What is ${DIGIBIZZ.name} offering?`} index={0}>
             <div className="mb-5 grid grid-cols-2 gap-2 md:grid-cols-4">
               {OPPORTUNITY_TYPES.map((t) => (
                 <motion.button
@@ -279,35 +260,13 @@ export default function OpportunityEditor() {
               <Field label="Title" className="sm:col-span-2" error={e.title?.message}>
                 {(fid) => <Input id={fid} {...register("title")} placeholder={type === "job" ? "e.g. Senior React Developer" : `e.g. ${OPPORTUNITY_TYPE_META[type].label} name`} invalid={!!e.title} />}
               </Field>
-              <Field label="Organization" error={e.organizationId?.message}>
-                {(fid) => (
-                  <Select
-                    id={fid}
-                    invalid={!!e.organizationId}
-                    disabled={!digiOrg}
-                    value={values.organizationId || digiOrg?.id || ""}
-                    {...register("organizationId", {
-                      onChange: (ev) => {
-                        const o = orgs?.find((x) => x.id === ev.target.value);
-                        if (o) setValue("category", o.category);
-                      },
-                    })}
-                  >
-                    {digiOrg ? <option value={digiOrg.id}>{digiOrg.name}</option> : <option value="">Select organization</option>}
-                  </Select>
-                )}
-              </Field>
-              <Field label="Category" hint="IndusTech: Government / International / Private">
-                {(fid) => (
-                  <Select id={fid} {...register("category")}>
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {CATEGORY_LABEL[c]}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-              </Field>
+              <div className="flex items-center gap-3 rounded-xl border border-line bg-well/60 p-3 sm:col-span-2">
+                <PublisherMark size={36} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Published by {DIGIBIZZ.name}</p>
+                  <p className="text-xs text-muted">Every opportunity on this portal is DigiBizz's own.</p>
+                </div>
+              </div>
               <Field label="Field">
                 {(fid) => (
                   <Select id={fid} {...register("field")}>
@@ -502,16 +461,13 @@ export default function OpportunityEditor() {
             </div>
           </Section>
 
-          <Section id="dates" title="Dates & apply" index={5}>
+          <Section id="dates" title="Dates" subtitle="Candidates apply on this portal" index={5}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Application deadline" hint="inclusive · empty = rolling" error={e.deadline?.message}>
                 {(fid) => <Input id={fid} type="date" {...register("deadline")} />}
               </Field>
               <Field label="Start date" hint="optional" error={e.startDate?.message}>
                 {(fid) => <Input id={fid} type="date" {...register("startDate")} />}
-              </Field>
-              <Field label="External apply URL" className="sm:col-span-2" hint="Leave empty to take applications on DigiBizz" error={e.externalApplyUrl?.message}>
-                {(fid) => <Input id={fid} {...register("externalApplyUrl")} placeholder="https://…" />}
               </Field>
             </div>
           </Section>

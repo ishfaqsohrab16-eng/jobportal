@@ -3,7 +3,7 @@ import type { FilterQuery, Model, SortOrder } from "mongoose";
 import { slugify, type OpportunityData, type OpportunityQuery } from "@digibizz/jobs-shared";
 import { z } from "zod";
 import { opportunityQuerySchema } from "@digibizz/jobs-shared";
-import type { Opportunity, OrganizationDoc } from "../models";
+import type { Opportunity } from "../models";
 import { escapeRegex } from "../lib/http";
 
 export const startOfTodayUTC = (now = new Date()) =>
@@ -18,7 +18,7 @@ export const liveFilter = (): FilterQuery<Opportunity> => ({
 export function searchFilter(q: string | undefined): FilterQuery<Opportunity> {
   if (!q) return {};
   const rx = new RegExp(escapeRegex(q), "i");
-  return { $or: [{ title: rx }, { organizationName: rx }, { skills: rx }, { field: rx }, { city: rx }, { summary: rx }] };
+  return { $or: [{ title: rx }, { skills: rx }, { field: rx }, { city: rx }, { summary: rx }] };
 }
 
 type ListQuery = z.output<typeof opportunityQuerySchema>;
@@ -27,12 +27,10 @@ export function buildListFilter(q: ListQuery, base: FilterQuery<Opportunity>): F
   const and: FilterQuery<Opportunity>[] = [base];
   if (q.q) and.push(searchFilter(q.q));
   if (q.type) and.push({ type: q.type });
-  if (q.category) and.push({ category: q.category });
   if (q.city) and.push({ city: new RegExp(`^${escapeRegex(q.city)}$`, "i") });
   if (q.workMode) and.push({ workMode: q.workMode });
   if (q.employmentType) and.push({ employmentType: q.employmentType });
   if (q.field) and.push({ field: q.field });
-  if (q.organization) and.push({ organizationName: new RegExp(escapeRegex(q.organization), "i") });
   if (q.it) and.push({ isITRelated: q.it === "1" });
   if (q.featured) and.push({ featured: true });
   if (q.closingSoon) {
@@ -68,13 +66,11 @@ export async function uniqueSlug(model: Model<any>, source: string, ignoreId?: s
 const toDate = (d: string | null | undefined) => (d ? new Date(`${d}T00:00:00.000Z`) : null);
 
 /** Map validated form input onto the stored document shape. */
-export function inputToDoc(data: OpportunityData, org: OrganizationDoc) {
-  const { organizationId: _drop, startDate, deadline, ...rest } = data;
+export function inputToDoc(data: OpportunityData) {
+  const { startDate, deadline, ...rest } = data;
   return {
     ...rest,
     employmentType: data.type === "job" || data.type === "internship" ? (data.employmentType ?? null) : null,
-    organization: org._id,
-    organizationName: org.name,
     startDate: toDate(startDate),
     deadline: toDate(deadline),
   };

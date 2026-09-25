@@ -1,6 +1,7 @@
 import {
   CATEGORY_LABEL,
   derivePublicStatus,
+  DIGIBIZZ,
   EMPLOYMENT_TYPE_LABEL,
   formatAge,
   formatExperience,
@@ -12,11 +13,15 @@ import {
   type EmploymentType,
 } from "@digibizz/jobs-shared";
 import { config } from "../config";
-import type { OpportunityDoc, OrganizationDoc } from "../models";
+import type { OpportunityDoc } from "../models";
 
 /**
  * Partner-facing JSON. snake_case, stable and additive-only: fields may be
  * added in v1 but never renamed or removed.
+ *
+ * Everything on this portal is published by DigiBizz Balochistan, so the
+ * organization block is constant and apply links always lead to our own
+ * application page.
  */
 
 const isoDay = (d: Date | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : null);
@@ -26,27 +31,26 @@ export function partnerLinks(o: OpportunityDoc, partnerSlug: string) {
   const ref = encodeURIComponent(partnerSlug);
   const detail = `${config.publicWebUrl}/opportunities/${o.slug}`;
   return {
-    apply_link: o.externalApplyUrl || `${detail}/apply?ref=${ref}`,
+    apply_link: `${detail}/apply?ref=${ref}`,
     source_url: `${detail}?ref=${ref}`,
   };
 }
 
 function base(o: OpportunityDoc, partnerSlug: string) {
-  const org = o.organization as unknown as OrganizationDoc | null;
-  const orgPopulated = org && typeof org === "object" && "name" in org;
   return {
     id: String(o._id),
     type: o.type,
     type_label: OPPORTUNITY_TYPE_META[o.type].label,
     title: o.title,
     slug: o.slug,
-    category: CATEGORY_LABEL[o.category],
+    category: CATEGORY_LABEL[DIGIBIZZ.category],
+    organization_name: DIGIBIZZ.name,
     organization: {
-      name: o.organizationName,
-      type: orgPopulated ? CATEGORY_LABEL[org.category] : CATEGORY_LABEL[o.category],
-      website: orgPopulated ? org.website || null : null,
-      logo_url: orgPopulated && org.logo ? `${config.publicWebUrl}/api/files/logos/${org.logo}` : null,
-      verified: orgPopulated ? org.verified : false,
+      name: DIGIBIZZ.name,
+      type: CATEGORY_LABEL[DIGIBIZZ.category],
+      website: config.publicWebUrl,
+      logo_url: `${config.publicWebUrl}/logo.svg`,
+      verified: true,
     },
     location: {
       country: o.country,
@@ -83,7 +87,7 @@ const empType = (t: EmploymentType | null | undefined) =>
 export function toPartnerJob(o: OpportunityDoc, partnerSlug: string) {
   return {
     ...base(o, partnerSlug),
-    employer_name: o.organizationName,
+    employer_name: DIGIBIZZ.name,
     number_of_positions: o.positions,
     salary: money(o),
     gender: o.gender,
@@ -133,7 +137,7 @@ export function toPartnerLearning(o: OpportunityDoc, partnerSlug: string) {
     seats: o.positions,
     fee:
       o.fee == null
-        ? { amount: null, currency: o.salaryCurrency, is_free: null, display: "Contact organization" }
+        ? { amount: null, currency: o.salaryCurrency, is_free: null, display: "Contact DigiBizz" }
         : {
             amount: o.fee,
             currency: o.salaryCurrency,

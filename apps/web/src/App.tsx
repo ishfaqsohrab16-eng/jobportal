@@ -3,7 +3,6 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import {
   Bookmarks,
   Briefcase,
-  Buildings,
   Chalkboard,
   ChartPieSlice,
   GraduationCap,
@@ -37,7 +36,6 @@ const AdminOverview = lazy(() => import("@/pages/admin/Overview"));
 const AdminOpportunities = lazy(() => import("@/pages/admin/Opportunities"));
 const AdminOpportunityEditor = lazy(() => import("@/pages/admin/OpportunityEditor"));
 const AdminApplications = lazy(() => import("@/pages/admin/Applications"));
-const AdminOrganizations = lazy(() => import("@/pages/admin/Organizations"));
 const AdminCandidates = lazy(() => import("@/pages/admin/Candidates"));
 const AdminApiKeys = lazy(() => import("@/pages/admin/ApiKeys"));
 
@@ -92,7 +90,6 @@ function AdminShell() {
         { to: "/admin", label: "Overview", icon: <ChartPieSlice className={i} />, end: true },
         { to: "/admin/opportunities", label: "Opportunities", icon: <Kanban className={i} /> },
         { to: "/admin/applications", label: "Applications", icon: <Tray className={i} /> },
-        { to: "/admin/organizations", label: "Organizations", icon: <Buildings className={i} /> },
         { to: "/admin/candidates", label: "Candidates", icon: <UsersThree className={i} /> },
         { to: "/admin/api-keys", label: "Partner API", icon: <Key className={i} /> },
       ],
@@ -127,7 +124,6 @@ export default function App() {
             <Route path="opportunities/new" element={<AdminOpportunityEditor />} />
             <Route path="opportunities/:id" element={<AdminOpportunityEditor />} />
             <Route path="applications" element={<AdminApplications />} />
-            <Route path="organizations" element={<AdminOrganizations />} />
             <Route path="candidates" element={<AdminCandidates />} />
             <Route path="api-keys" element={<AdminApiKeys />} />
           </Route>

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   APPLICATION_STATUSES,
-  CATEGORIES,
   EMPLOYMENT_TYPES,
   GENDERS,
   OPPORTUNITY_STATUSES,
@@ -64,27 +63,12 @@ export const changePasswordSchema = z.object({
   newPassword: passwordSchema,
 });
 
-/* ------------------------------------------------------- organizations */
-
-export const organizationSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  category: z.enum(CATEGORIES),
-  website: z.url("Enter a full URL, e.g. https://…").max(300).optional().or(z.literal("")).default(""),
-  city: optionalText(60),
-  country: trimmed(60).default("Pakistan"),
-  about: optionalText(2000),
-  verified: z.boolean().default(false),
-});
-export type OrganizationInput = z.input<typeof organizationSchema>;
-
 /* ------------------------------------------------------- opportunities */
 
 export const opportunitySchema = z
   .object({
     type: z.enum(OPPORTUNITY_TYPES),
     title: z.string().trim().min(3, "Title is too short").max(160),
-    organizationId: objectId,
-    category: z.enum(CATEGORIES),
     isITRelated: z.boolean().default(true),
     field: optionalText(60),
     summary: optionalText(300),
@@ -118,7 +102,6 @@ export const opportunitySchema = z
     benefits: list(30),
     startDate: isoDate,
     deadline: isoDate,
-    externalApplyUrl: z.url().max(500).optional().or(z.literal("")).default(""),
     status: z.enum(OPPORTUNITY_STATUSES).default("draft"),
     featured: z.boolean().default(false),
   })
@@ -138,12 +121,10 @@ export type OpportunityData = z.output<typeof opportunitySchema>;
 export const opportunityQuerySchema = z.object({
   q: trimmed(100).optional(),
   type: z.enum(OPPORTUNITY_TYPES).optional(),
-  category: z.enum(CATEGORIES).optional(),
   city: trimmed(60).optional(),
   workMode: z.enum(WORK_MODES).optional(),
   employmentType: z.enum(EMPLOYMENT_TYPES).optional(),
   field: trimmed(60).optional(),
-  organization: trimmed(160).optional(),
   it: z.enum(["1", "0"]).optional(),
   closingSoon: z.enum(["1"]).optional(),
   featured: z.enum(["1"]).optional(),
@@ -187,7 +168,6 @@ export const partnerQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   updated_since: z.iso.datetime({ offset: true }).or(z.iso.date()).optional(),
   status: z.enum(["open", "closed", "expired", "all"]).default("open"),
-  category: z.enum(["government", "international", "private"]).optional(),
   city: trimmed(60).optional(),
   q: trimmed(100).optional(),
 });

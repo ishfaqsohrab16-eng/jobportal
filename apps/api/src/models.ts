@@ -1,7 +1,6 @@
 import mongoose, { Schema, type HydratedDocument, type InferSchemaType, type Types } from "mongoose";
 import {
   APPLICATION_STATUSES,
-  CATEGORIES,
   EMPLOYMENT_TYPES,
   GENDERS,
   OPPORTUNITY_STATUSES,
@@ -52,26 +51,6 @@ export type User = InferSchemaType<typeof userSchema>;
 export type UserDoc = HydratedDocument<User>;
 export const UserModel = mongoose.model("User", userSchema);
 
-/* ---------------------------------------------------------- organization */
-
-const organizationSchema = new Schema(
-  {
-    name: { type: String, required: true, trim: true },
-    slug: { type: String, required: true, unique: true },
-    category: { type: String, enum: CATEGORIES, required: true },
-    website: str(),
-    city: str(),
-    country: str({ default: "Pakistan" }),
-    about: str(),
-    logo: { type: String, default: null },
-    verified: { type: Boolean, default: false },
-  },
-  { timestamps: true },
-);
-export type Organization = InferSchemaType<typeof organizationSchema>;
-export type OrganizationDoc = HydratedDocument<Organization>;
-export const OrganizationModel = mongoose.model("Organization", organizationSchema);
-
 /* ----------------------------------------------------------- opportunity */
 
 const opportunitySchema = new Schema(
@@ -79,10 +58,6 @@ const opportunitySchema = new Schema(
     type: { type: String, enum: OPPORTUNITY_TYPES, required: true },
     slug: { type: String, required: true, unique: true },
     title: { type: String, required: true, trim: true },
-    organization: { type: Schema.Types.ObjectId, ref: "Organization", required: true, index: true },
-    /** Denormalised for text search and partner feeds. Kept in sync when the organization is renamed. */
-    organizationName: { type: String, required: true },
-    category: { type: String, enum: CATEGORIES, required: true },
     isITRelated: { type: Boolean, default: true },
     field: str(),
     summary: str(),
@@ -117,7 +92,6 @@ const opportunitySchema = new Schema(
     startDate: { type: Date, default: null },
     /** Stored as UTC midnight of the last day applications are accepted. */
     deadline: { type: Date, default: null },
-    externalApplyUrl: str(),
     status: { type: String, enum: OPPORTUNITY_STATUSES, default: "draft" },
     featured: { type: Boolean, default: false },
     views: { type: Number, default: 0 },

@@ -9,16 +9,15 @@ import {
   OPPORTUNITY_STATUSES,
   OPPORTUNITY_TYPES,
   opportunitySchema,
-  organizationSchema,
   type AdminOverview,
   type ApplicationStatus,
   type OpportunityType,
 } from "@digibizz/jobs-shared";
 import { currentUser, requireAuth, requireRole } from "../lib/auth";
-import { badRequest, body, conflict, escapeRegex, notFound, objectIdParam, query } from "../lib/http";
-import { LOGO_DIR, logoUpload, removeFile, RESUME_DIR, sendStoredFile } from "../lib/uploads";
-import { ApiKeyModel, ApiUsageModel, ApplicationModel, OpportunityModel, OrganizationModel, UserModel } from "../models";
-import { toApiKeyDTO, toApplicationDTO, toOpportunityDTO, toOrganizationDTO, toUserDTO } from "../serializers";
+import { body, conflict, escapeRegex, notFound, objectIdParam, query } from "../lib/http";
+import { RESUME_DIR, sendStoredFile } from "../lib/uploads";
+import { ApiKeyModel, ApiUsageModel, ApplicationModel, OpportunityModel, UserModel } from "../models";
+import { toApiKeyDTO, toApplicationDTO, toOpportunityDTO, toUserDTO } from "../serializers";
 import { hashApiKey } from "../partner/auth";
 import { inputToDoc, searchFilter, startOfTodayUTC, uniqueSlug } from "../services/opportunities";
 
@@ -104,7 +103,6 @@ const adminOppQuery = z.object({
   q: z.string().trim().max(100).optional(),
   type: z.enum(OPPORTUNITY_TYPES).optional(),
   status: z.enum(OPPORTUNITY_STATUSES).optional(),
-  organization: z.string().regex(/^[a-f\d]{24}$/i).optional(),
   page,
   limit,
 });
@@ -115,37 +113,28 @@ adminRouter.get("/opportunities", async (req, res) => {
     ...searchFilter(q.q),
     ...(q.type ? { type: q.type } : {}),
     ...(q.status ? { status: q.status } : {}),
-    ...(q.organization ? { organization: q.organization } : {}),
   };
   const [docs, total] = await Promise.all([
-    OpportunityModel.find(filter).sort({ updatedAt: -1 }).skip((q.page - 1) * q.limit).limit(q.limit).populate("organization"),
+    OpportunityModel.find(filter).sort({ updatedAt: -1 }).skip((q.page - 1) * q.limit).limit(q.limit),
     OpportunityModel.countDocuments(filter),
   ]);
   res.json(paginate(docs.map((d) => toOpportunityDTO(d)), q.page, q.limit, total));
 });
 
 adminRouter.get("/opportunities/:id", async (req, res) => {
-  const doc = await OpportunityModel.findById(objectIdParam(req)).populate("organization");
+  const doc = await OpportunityModel.findById(objectIdParam(req));
   if (!doc) throw notFound("Opportunity");
   res.json(toOpportunityDTO(doc));
 });
 
-async function loadOrg(id: string) {
-  const org = await OrganizationModel.findById(id);
-  if (!org) throw badRequest("Choose an organization", { organizationId: "Organization not found" });
-  return org;
-}
-
 adminRouter.post("/opportunities", async (req, res) => {
   const input = body(req, opportunitySchema);
-  const org = await loadOrg(input.organizationId);
   const doc = await OpportunityModel.create({
-    ...inputToDoc(input, org),
-    slug: await uniqueSlug(OpportunityModel, `${input.title} ${org.name}`),
+    ...inputToDoc(input),
+    slug: await uniqueSlug(OpportunityModel, input.title),
     publishedAt: input.status === "open" ? new Date() : null,
     createdBy: currentUser(req)._id,
   });
-  await doc.populate("organization");
   res.status(201).json(toOpportunityDTO(doc));
 });
 
@@ -153,11 +142,9 @@ adminRouter.put("/opportunities/:id", async (req, res) => {
   const input = body(req, opportunitySchema);
   const doc = await OpportunityModel.findById(objectIdParam(req));
   if (!doc) throw notFound("Opportunity");
-  const org = await loadOrg(input.organizationId);
-  doc.set(inputToDoc(input, org));
+  doc.set(inputToDoc(input));
   if (input.status === "open" && !doc.publishedAt) doc.publishedAt = new Date();
   await doc.save();
-  await doc.populate("organization");
   res.json(toOpportunityDTO(doc));
 });
 
@@ -168,7 +155,6 @@ adminRouter.patch("/opportunities/:id/status", async (req, res) => {
   doc.status = status;
   if (status === "open" && !doc.publishedAt) doc.publishedAt = new Date();
   await doc.save();
-  await doc.populate("organization");
   res.json(toOpportunityDTO(doc));
 });
 
@@ -179,7 +165,7 @@ adminRouter.post("/opportunities/:id/duplicate", async (req, res) => {
   const doc = await OpportunityModel.create({
     ...rest,
     title: `${src.title} (copy)`,
-    slug: await uniqueSlug(OpportunityModel, `${src.title} ${src.organizationName}`),
+    slug: await uniqueSlug(OpportunityModel, src.title),
     status: "draft",
     featured: false,
     views: 0,
@@ -187,7 +173,6 @@ adminRouter.post("/opportunities/:id/duplicate", async (req, res) => {
     publishedAt: null,
     createdBy: currentUser(req)._id,
   });
-  await doc.populate("organization");
   res.status(201).json(toOpportunityDTO(doc));
 });
 
@@ -198,61 +183,6 @@ adminRouter.delete("/opportunities/:id", async (req, res) => {
   }
   const result = await OpportunityModel.deleteOne({ _id: id });
   if (!result.deletedCount) throw notFound("Opportunity");
-  res.status(204).end();
-});
-
-/* --------------------------------------------------------- organizations */
-
-adminRouter.get("/organizations", async (_req, res) => {
-  const [orgs, counts] = await Promise.all([
-    OrganizationModel.find().sort({ name: 1 }),
-    OpportunityModel.aggregate<{ _id: unknown; n: number }>([
-      { $match: { status: "open" } },
-      { $group: { _id: "$organization", n: { $sum: 1 } } },
-    ]),
-  ]);
-  const byOrg = new Map(counts.map((c) => [String(c._id), c.n]));
-  res.json(orgs.map((o) => toOrganizationDTO(o, byOrg.get(o.id) ?? 0)));
-});
-
-adminRouter.post("/organizations", async (req, res) => {
-  const input = body(req, organizationSchema);
-  const org = await OrganizationModel.create({ ...input, slug: await uniqueSlug(OrganizationModel, input.name) });
-  res.status(201).json(toOrganizationDTO(org, 0));
-});
-
-adminRouter.put("/organizations/:id", async (req, res) => {
-  const input = body(req, organizationSchema);
-  const org = await OrganizationModel.findById(objectIdParam(req));
-  if (!org) throw notFound("Organization");
-  const renamed = org.name !== input.name;
-  org.set(input);
-  await org.save();
-  if (renamed) await OpportunityModel.updateMany({ organization: org._id }, { organizationName: org.name });
-  res.json(toOrganizationDTO(org));
-});
-
-adminRouter.post("/organizations/:id/logo", logoUpload, async (req, res) => {
-  if (!req.file) throw badRequest("Attach a PNG, JPG or WebP logo");
-  const org = await OrganizationModel.findById(objectIdParam(req));
-  if (!org) {
-    removeFile(LOGO_DIR, req.file.filename);
-    throw notFound("Organization");
-  }
-  removeFile(LOGO_DIR, org.logo);
-  org.logo = req.file.filename;
-  await org.save();
-  res.json(toOrganizationDTO(org));
-});
-
-adminRouter.delete("/organizations/:id", async (req, res) => {
-  const id = objectIdParam(req);
-  if (await OpportunityModel.exists({ organization: id })) {
-    throw conflict("Remove or reassign this organization's opportunities first");
-  }
-  const org = await OrganizationModel.findByIdAndDelete(id);
-  if (!org) throw notFound("Organization");
-  removeFile(LOGO_DIR, org.logo);
   res.status(204).end();
 });
 

@@ -14,25 +14,25 @@ export const OPPORTUNITY_TYPE_META: Record<
     label: "Job",
     plural: "Jobs",
     path: "jobs",
-    blurb: "Full-time, part-time and contract roles across Pakistan and abroad.",
+    blurb: "Roles at DigiBizz Balochistan.",
   },
   internship: {
     label: "Internship",
     plural: "Internships",
     path: "internships",
-    blurb: "Paid and unpaid placements to get real industry experience.",
+    blurb: "DigiBizz internships to get real industry experience.",
   },
   program: {
     label: "Program",
     plural: "Programs & Courses",
     path: "programs",
-    blurb: "Degree, diploma and certification programs to build your career.",
+    blurb: "DigiBizz programs and courses to build your career.",
   },
   training: {
     label: "Training",
     plural: "Trainings",
     path: "trainings",
-    blurb: "Short, hands-on skills trainings, bootcamps and workshops.",
+    blurb: "Hands-on DigiBizz trainings, bootcamps and workshops.",
   },
 };
 
@@ -47,6 +47,19 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   international: "International",
   private: "Private",
 };
+
+/**
+ * The portal publishes DigiBizz Balochistan's own opportunities only - there are
+ * no other organizations. Every opportunity (and the partner feed) is attributed
+ * to this publisher; its category fills IndusTech's "Job Category" field.
+ */
+export const DIGIBIZZ = {
+  name: "DigiBizz Balochistan",
+  slug: "digibizz-balochistan",
+  category: "government" as Category,
+  city: "Quetta",
+  country: "Pakistan",
+} as const;
 
 export const WORK_MODES = ["onsite", "remote", "hybrid"] as const;
 export type WorkMode = (typeof WORK_MODES)[number];
@@ -171,4 +184,3 @@ export const PARTNER_SCOPES = ["jobs", "internships", "programs", "trainings"] a
 export type PartnerScope = (typeof PARTNER_SCOPES)[number];
 
 export const RESUME_MAX_BYTES = 5 * 1024 * 1024;
-export const LOGO_MAX_BYTES = 1 * 1024 * 1024;

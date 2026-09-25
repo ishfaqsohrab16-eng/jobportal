@@ -13,8 +13,8 @@ import { useMyApplicationsQuery, useOpportunitiesQuery, useSavedQuery, useWithdr
 import { useAuth, useToast } from "@/hooks";
 import { useShellHeader } from "@/components/layout/ShellContext";
 import { CountUp, MiniBars, Stagger } from "@/components/motion";
-import { OpportunityCard, TypeBadge } from "@/components/opportunity";
-import { Avatar, Badge, Button, ButtonLink, ConfirmDialog, EmptyState, Input, PanelHeader, Segmented, Skeleton } from "@/components/ui";
+import { OpportunityCard, PublisherMark, TypeBadge } from "@/components/opportunity";
+import { Badge, Button, ButtonLink, ConfirmDialog, EmptyState, Input, PanelHeader, Segmented, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { errorMessage } from "@/lib/errors";
 import { ease, panelIntro } from "@/lib/motion";
@@ -230,7 +230,7 @@ export default function Dashboard() {
                   <motion.li key={a.id} layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={{ delay: i * 0.04, duration: 0.35 }}>
                     <button onClick={() => setOpen(open === a.id ? null : a.id)} className="grid w-full grid-cols-1 items-center gap-3 px-2 py-4 text-left md:grid-cols-[2fr_1fr_1fr_1.1fr_40px] md:gap-4 md:px-4">
                       <span className="flex min-w-0 items-center gap-3">
-                        <Avatar name={a.opportunity.organizationName || "?"} size={38} />
+                        <PublisherMark size={38} />
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-semibold">{a.opportunity.title}</span>
                           <span className="flex items-center gap-2 truncate text-xs text-muted">
@@ -293,7 +293,7 @@ export default function Dashboard() {
             <div className="mt-3 space-y-2">
               {(saved ?? []).slice(0, 3).map((o) => (
                 <Link key={o.id} to={`/opportunities/${o.slug}`} className="flex items-center gap-3 rounded-xl bg-well p-2.5 transition-colors hover:bg-surface-2">
-                  <Avatar name={o.organization.name} src={o.organization.logoUrl} size={32} />
+                  <PublisherMark size={32} />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{o.title}</span>
                 </Link>
               ))}

@@ -68,7 +68,7 @@ export function AuthLayout({ mood, title, subtitle, children, footer }: { mood: 
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.8, ease }} className="absolute inset-x-8 bottom-8 z-10 flex items-end justify-between gap-6">
           <p className="max-w-sm font-display text-2xl font-semibold leading-tight text-white">
-            One profile. Every opportunity in <span className="text-[#2fd08a]">Balochistan</span> and beyond.
+            One profile for every <span className="text-[#2fd08a]">DigiBizz</span> job, internship, program and training.
           </p>
           <p className="text-right text-[10.5px] leading-snug text-white/30">
             Mascot: “Mazerance” by oneblvckboi

@@ -3,8 +3,8 @@
 **/dist
 **/coverage
 **/.vite
-.data
-uploads
+**/.data
+**/uploads
 .git
 .claude
 .env
@@ -12,3 +12,5 @@ uploads
 !.env.example
 *.log
 docs
+# Source copies of the Rive files (the app ships apps/web/public/rive).
+/*.riv

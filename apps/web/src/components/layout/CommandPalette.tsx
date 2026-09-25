@@ -33,7 +33,7 @@ export function CommandPalette({ open, onClose, links }: { open: boolean; onClos
         ? (data?.items ?? []).map((o) => ({
             key: o.id,
             label: o.title,
-            sub: `${OPPORTUNITY_TYPE_META[o.type].label} · ${o.organization.name} · ${deadlineLabel(o.deadline)}`,
+            sub: `${OPPORTUNITY_TYPE_META[o.type].label} · ${deadlineLabel(o.deadline)}`,
             to: `/opportunities/${o.slug}`,
             icon: <Briefcase className="size-4" />,
           }))

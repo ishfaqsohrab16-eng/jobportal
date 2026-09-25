@@ -118,7 +118,7 @@ export default function Register() {
         <Button type="submit" variant="primary" size="lg" block loading={isLoading} chip={<ArrowRight weight="bold" className="size-4" />}>
           Create account
         </Button>
-        <p className="text-center text-xs text-muted">By continuing you agree to share your profile with organizations you apply to.</p>
+        <p className="text-center text-xs text-muted">By continuing you agree to share your profile with DigiBizz Balochistan when you apply.</p>
       </motion.form>
     </AuthLayout>
   );

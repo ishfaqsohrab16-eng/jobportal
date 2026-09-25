@@ -9,8 +9,8 @@ import {
 } from "@digibizz/jobs-shared";
 import { optionalAuth } from "../lib/auth";
 import { notFound, query } from "../lib/http";
-import { ApplicationModel, OpportunityModel, OrganizationModel } from "../models";
-import { toOpportunityDTO, toOrganizationDTO } from "../serializers";
+import { ApplicationModel, OpportunityModel } from "../models";
+import { toOpportunityDTO } from "../serializers";
 import { buildListFilter, liveFilter, sortFor } from "../services/opportunities";
 
 export const publicRouter = Router();
@@ -22,8 +22,7 @@ publicRouter.get("/opportunities", async (req, res) => {
     OpportunityModel.find(filter)
       .sort(sortFor(q.sort))
       .skip((q.page - 1) * q.limit)
-      .limit(q.limit)
-      .populate("organization"),
+      .limit(q.limit),
     OpportunityModel.countDocuments(filter),
   ]);
   const body: Paginated<OpportunityDTO> = {
@@ -37,7 +36,7 @@ publicRouter.get("/opportunities", async (req, res) => {
 });
 
 publicRouter.get("/opportunities/:slug", optionalAuth, async (req, res) => {
-  const doc = await OpportunityModel.findOne({ slug: req.params.slug }).populate("organization");
+  const doc = await OpportunityModel.findOne({ slug: req.params.slug });
   const isAdmin = req.user?.role === "admin";
   if (!doc || (doc.status === "draft" && !isAdmin)) throw notFound("Opportunity");
 
@@ -61,45 +60,18 @@ publicRouter.get("/opportunities/:slug/similar", async (req, res) => {
     $and: [liveFilter(), { _id: { $ne: doc._id }, type: doc.type }],
   })
     .sort({ field: doc.field ? -1 : 1, publishedAt: -1 })
-    .limit(20)
-    .populate("organization");
+    .limit(20);
   // Prefer the same field, then fill with the newest of the same type.
   const ranked = [...docs.filter((d) => d.field === doc.field), ...docs.filter((d) => d.field !== doc.field)];
   res.json(ranked.slice(0, 4).map((d) => toOpportunityDTO(d)));
 });
 
-publicRouter.get("/organizations", async (_req, res) => {
-  const [orgs, counts] = await Promise.all([
-    OrganizationModel.find().sort({ verified: -1, name: 1 }),
-    OpportunityModel.aggregate<{ _id: unknown; n: number }>([
-      { $match: liveFilter() },
-      { $group: { _id: "$organization", n: { $sum: 1 } } },
-    ]),
-  ]);
-  const byOrg = new Map(counts.map((c) => [String(c._id), c.n]));
-  res.json(orgs.map((o) => toOrganizationDTO(o, byOrg.get(o.id) ?? 0)));
-});
-
-publicRouter.get("/organizations/:slug", async (req, res) => {
-  const org = await OrganizationModel.findOne({ slug: req.params.slug });
-  if (!org) throw notFound("Organization");
-  const opportunities = await OpportunityModel.find({ $and: [liveFilter(), { organization: org._id }] })
-    .sort({ publishedAt: -1 })
-    .limit(50)
-    .populate("organization");
-  res.json({
-    organization: toOrganizationDTO(org, opportunities.length),
-    opportunities: opportunities.map((d) => toOpportunityDTO(d)),
-  });
-});
-
 publicRouter.get("/stats", async (_req, res) => {
-  const [byType, orgs, cities, it] = await Promise.all([
+  const [byType, cities, it] = await Promise.all([
     OpportunityModel.aggregate<{ _id: OpportunityType; n: number }>([
       { $match: liveFilter() },
       { $group: { _id: "$type", n: { $sum: "$positions" } } },
     ]),
-    OrganizationModel.countDocuments(),
     OpportunityModel.distinct("city", liveFilter()),
     OpportunityModel.aggregate<{ _id: boolean; n: number }>([
       { $match: liveFilter() },
@@ -112,7 +84,6 @@ publicRouter.get("/stats", async (_req, res) => {
   const all = it.reduce((s, r) => s + r.n, 0);
   const stats: PublicStats = {
     open,
-    organizations: orgs,
     cities: cities.filter(Boolean).length,
     itShare: all ? Math.round((itCount / all) * 100) : 0,
   };
@@ -132,7 +103,7 @@ publicRouter.get("/facets", async (req, res) => {
   ];
   const [result] = await OpportunityModel.aggregate([
     { $match: match },
-    { $facet: { cities: facet("city"), fields: facet("field"), categories: facet("category"), workModes: facet("workMode") } },
+    { $facet: { cities: facet("city"), fields: facet("field"), workModes: facet("workMode") } },
   ]);
   res.json(result);
 });
