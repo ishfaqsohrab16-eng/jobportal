@@ -1,0 +1,27 @@
+{
+  "name": "digibizz-jobs",
+  "private": true,
+  "version": "1.0.0",
+  "description": "DigiBizz Jobs - job, internship, program and training portal with a partner API for IndusTech Connect.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c green,yellow \"npm:dev -w @digibizz/jobs-api\" \"npm:dev -w @digibizz/jobs-web\"",
+    "build": "npm run build -w @digibizz/jobs-api && npm run build -w @digibizz/jobs-web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "seed": "npm run seed -w @digibizz/jobs-api",
+    "seed:demo": "npm run seed:demo -w @digibizz/jobs-api",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "~5.9.3"
+  }
+}

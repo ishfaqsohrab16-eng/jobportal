@@ -1,0 +1,14 @@
+# Everything here is reinstalled or rebuilt inside the image.
+**/node_modules
+**/dist
+**/coverage
+**/.vite
+.data
+uploads
+.git
+.claude
+.env
+.env.*
+!.env.example
+*.log
+docs
