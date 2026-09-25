@@ -85,7 +85,7 @@ partnerRouter.get("/", (req, res) => {
       list: `${config.publicWebUrl}/api/partner/v1/${c.scope}`,
       item: `${config.publicWebUrl}/api/partner/v1/${c.scope}/{id}`,
     })),
-    docs: `${config.publicWebUrl}/developers`,
+    docs: `${config.publicWebUrl}/api/partner/v1/openapi.json`,
     openapi: `${config.publicWebUrl}/api/partner/v1/openapi.json`,
   });
 });
