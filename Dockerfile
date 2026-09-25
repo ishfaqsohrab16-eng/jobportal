@@ -53,7 +53,8 @@ RUN mkdir -p /data/uploads && chown -R node:node /data
 USER node
 
 EXPOSE 3000
+# Use the port the app actually listens on - Easypanel may inject PORT (e.g. 80).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3000/api/health > /dev/null || exit 1
+  CMD wget -qO- "http://127.0.0.1:${PORT:-3000}/api/health" > /dev/null || exit 1
 
 CMD ["node", "dist/index.js"]
