@@ -69,6 +69,10 @@ export function createApp() {
         setHeaders(res, file) {
           // Vite fingerprints everything under /assets, so it can be cached forever.
           if (file.includes(`${path.sep}assets${path.sep}`)) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          // Everything else (index.html, logo.svg, theme.js, the .riv mascot) is
+          // served from a fixed name, so it must be revalidated or a redeploy
+          // leaves browsers on the previous build.
+          else res.setHeader("Cache-Control", "no-cache");
         },
       }),
     );

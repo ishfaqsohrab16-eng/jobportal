@@ -1,4 +1,5 @@
-import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { AnimatePresence, motion, useScroll, useSpring } from "motion/react";
 import {
@@ -76,16 +77,49 @@ function UserMenu({ align = "rail" }: { align?: "rail" | "header" }) {
   const { user, isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
   const [logout] = useLogoutMutation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
+  /**
+   * The menu is rendered through a portal on document.body and positioned from
+   * the trigger's own rect. Anchoring it inside the rail meant any ancestor
+   * that clips or starts a new stacking context (the animated main panel does
+   * both) could hide it; from the body nothing can.
+   */
+  const place = useCallback(() => {
+    const trigger = ref.current?.getBoundingClientRect();
+    if (!trigger) return;
+    const W = 256; // w-64
+    const gap = 12;
+    if (align === "rail") {
+      setPos({ top: Math.max(gap, trigger.bottom - 8), left: trigger.right + gap });
+    } else {
+      setPos({ top: trigger.bottom + 8, left: Math.max(gap, trigger.right - W) });
+    }
+  }, [align]);
+
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    place();
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, place]);
 
   if (!user) {
     return align === "rail" ? (
@@ -107,36 +141,43 @@ function UserMenu({ align = "rail" }: { align?: "rail" | "header" }) {
       <motion.button whileTap={{ scale: 0.94 }} onClick={() => setOpen((o) => !o)} aria-label="Account menu" className="block rounded-xl ring-2 ring-transparent transition hover:ring-line-strong">
         <Avatar name={user.name} size={align === "rail" ? 40 : 36} />
       </motion.button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.94, y: align === "rail" ? 8 : -8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96 }}
-            transition={{ type: "spring", stiffness: 500, damping: 34 }}
-            className={cn(
-              "panel absolute z-50 w-64 p-2 shadow-2xl",
-              align === "rail" ? "bottom-0 left-full ml-3 origin-bottom-left" : "right-0 top-full mt-2 origin-top-right",
-            )}
-          >
-            <div className="flex items-center gap-3 rounded-xl bg-well p-3">
-              <Avatar name={user.name} size={36} />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{user.name}</p>
-                <p className="truncate text-xs text-muted">{user.email}</p>
+      {createPortal(
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              ref={menuRef}
+              role="menu"
+              initial={{ opacity: 0, scale: 0.94, y: align === "rail" ? 8 : -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 500, damping: 34 }}
+              style={{ top: pos.top, left: pos.left }}
+              className={cn(
+                "panel fixed z-[100] w-64 p-2 shadow-2xl",
+                align === "rail" ? "origin-bottom-left -translate-y-full" : "origin-top-right",
+              )}
+            >
+              <div className="flex items-center gap-3 rounded-xl bg-well p-3">
+                <Avatar name={user.name} size={36} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{user.name}</p>
+                  <p className="truncate text-xs text-muted">{user.email}</p>
+                </div>
               </div>
-            </div>
-            <div className="mt-1 flex flex-col">
-              {isAdmin && <MenuLink to="/admin" onClick={() => setOpen(false)} label="Admin dashboard" />}
-              {!isAdmin && <MenuLink to="/me" onClick={() => setOpen(false)} label="My dashboard" />}
-              {!isAdmin && <MenuLink to="/me/profile" onClick={() => setOpen(false)} label="Profile & resume" />}
-              <button onClick={signOut} className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-danger-soft">
-                <SignOut className="size-4" /> Sign out
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <div className="mt-1 flex flex-col">
+                {isAdmin && <MenuLink to="/admin" onClick={() => setOpen(false)} label="Admin dashboard" />}
+                {isAdmin && <MenuLink to="/admin/settings" onClick={() => setOpen(false)} label="Settings & password" />}
+                {!isAdmin && <MenuLink to="/me" onClick={() => setOpen(false)} label="My dashboard" />}
+                {!isAdmin && <MenuLink to="/me/profile" onClick={() => setOpen(false)} label="Profile & resume" />}
+                <button onClick={signOut} className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-danger-soft" role="menuitem">
+                  <SignOut className="size-4" /> Sign out
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   );
 }
