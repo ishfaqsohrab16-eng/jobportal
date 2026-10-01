@@ -5,6 +5,8 @@ import { currentUser, requireAuth, requireRole } from "../lib/auth";
 import { badRequest, body, conflict, HttpError, notFound, objectIdParam } from "../lib/http";
 import { RESUME_DIR, removeFile, resumeUpload, sendStoredFile } from "../lib/uploads";
 import { ApplicationModel, OpportunityModel, UserModel } from "../models";
+import { config } from "../config";
+import { sendAdminNewApplicationEmail, sendApplicationReceivedEmail } from "../services/email";
 import { toApplicationDTO, toOpportunityDTO, toUserDTO } from "../serializers";
 
 export const meRouter = Router();
@@ -102,6 +104,10 @@ meRouter.post("/applications/:id", requireRole("candidate"), async (req, res) =>
     history: [{ status: "submitted", note: "", at: new Date() }],
   });
   await OpportunityModel.updateOne({ _id: opp._id }, { $inc: { applicationsCount: 1 } });
+  opp.applicationsCount += 1;
+
+  void sendApplicationReceivedEmail(user, opp);
+  if (config.adminNotifyEmail) void sendAdminNewApplicationEmail(config.adminNotifyEmail, user, opp, app.source);
 
   // Keep the profile useful for the next application.
   if (!user.phone || (!user.city && input.city)) {

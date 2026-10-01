@@ -41,6 +41,10 @@ export interface UserDTO {
   createdAt: string;
 }
 
+export interface DeleteOpportunityResult {
+  deletedApplications: number;
+}
+
 export interface OrganizationSummary {
   id: string;
   name: string;

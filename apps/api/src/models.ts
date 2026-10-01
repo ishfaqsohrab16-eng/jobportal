@@ -44,6 +44,9 @@ const userSchema = new Schema(
     resume: { type: fileSchema, default: null },
     saved: [{ type: Schema.Types.ObjectId, ref: "Opportunity" }],
     lastLoginAt: { type: Date, default: null },
+    /** SHA-256 of the password-reset token; the token itself only ever exists in the email. */
+    resetTokenHash: { type: String, default: null, select: false },
+    resetTokenExpiresAt: { type: Date, default: null, select: false },
   },
   { timestamps: true },
 );

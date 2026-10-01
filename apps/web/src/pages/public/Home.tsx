@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, ArrowUpRight, CaretLeft, CaretRight, Lightning, MagnifyingGlass, MapPin, Sparkle } from "@phosphor-icons/react";
+import { ArrowRight, ArrowUpRight, CaretLeft, CaretRight, Lightning, MagnifyingGlass, MapPin, Sparkle, TrendUp } from "@phosphor-icons/react";
 import {
   CITIES,
   DIGIBIZZ,
@@ -18,6 +18,35 @@ import { cn } from "@/lib/cn";
 import { ease, panelIntro } from "@/lib/motion";
 
 /* ---------------------------------------------------------------- hero */
+
+/**
+ * Shortcuts under the search box. These are the fields DigiBizz is actually
+ * hiring in right now (with counts), not a hard-coded list, so the row stays
+ * truthful and disappears when nothing is published.
+ */
+function PopularSearches() {
+  const { data } = useFacetsQuery(undefined);
+  const fields = (data?.fields ?? []).slice(0, 5);
+  if (!fields.length) return null;
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="mt-4 flex flex-wrap items-center gap-2">
+      <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-muted">
+        <TrendUp weight="bold" className="size-3.5 text-brand" /> Trending
+      </span>
+      {fields.map((f, i) => (
+        <motion.span key={f.value} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 + i * 0.06 }}>
+          <Link
+            to={`/jobs?field=${encodeURIComponent(f.value)}`}
+            className="group inline-flex items-center gap-1.5 rounded-full border border-line bg-surface/60 py-1 pl-3 pr-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
+          >
+            {f.value}
+            <span className="rounded-full bg-well px-1.5 text-[11px] tabular-nums text-muted transition-colors group-hover:bg-brand-soft group-hover:text-brand">{f.count}</span>
+          </Link>
+        </motion.span>
+      ))}
+    </motion.div>
+  );
+}
 
 function SearchConsole() {
   const navigate = useNavigate();
@@ -39,19 +68,21 @@ function SearchConsole() {
       transition={{ delay: 0.6, duration: 0.7, ease }}
       className="panel mt-8 p-2 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.7)]"
     >
+      {/* fluid: the four labels wrap onto two rows on a phone instead of scrolling out of sight. */}
       <Segmented
         value={type}
         onChange={setType}
         size="sm"
-        className="mb-2 w-full overflow-x-auto scrollbar-none"
+        fluid
+        className="mb-2"
         options={OPPORTUNITY_TYPES.map((t) => ({ value: t, label: OPPORTUNITY_TYPE_META[t].plural }))}
       />
       <div className="flex flex-col gap-2 sm:flex-row">
-        <label className="flex h-12 flex-1 items-center gap-2.5 rounded-xl bg-well px-3.5 focus-within:ring-2 focus-within:ring-brand/40">
-          <MagnifyingGlass className="size-5 text-muted" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Title or skill" className="h-full flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted" />
+        <label className="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl bg-well px-3.5 focus-within:ring-2 focus-within:ring-brand/40">
+          <MagnifyingGlass className="size-5 shrink-0 text-muted" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Title or skill" className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted" />
         </label>
-        <div className="sm:w-44">
+        <div className="sm:w-40">
           <Select value={city} onChange={(e) => setCity(e.target.value)} className="h-12" aria-label="City">
             <option value="">Any city</option>
             {CITIES.map((c) => (
@@ -59,7 +90,7 @@ function SearchConsole() {
             ))}
           </Select>
         </div>
-        <Button type="submit" variant="primary" size="lg" className="h-12" icon={<MagnifyingGlass weight="bold" className="size-4" />}>
+        <Button type="submit" variant="primary" size="lg" className="h-12 shrink-0" icon={<MagnifyingGlass weight="bold" className="size-4" />}>
           Search
         </Button>
       </div>
@@ -122,9 +153,22 @@ function Hero() {
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-grid text-ink opacity-50 mask-fade-b" />
       <div aria-hidden className="pointer-events-none absolute -left-24 top-10 size-[420px] animate-aurora rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--brand)_20%,transparent),transparent)] blur-3xl" />
       <div aria-hidden className="pointer-events-none absolute right-0 top-0 size-[380px] animate-aurora rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--violet)_16%,transparent),transparent)] blur-3xl [animation-delay:-6s]" />
+      {/* Themed backdrop: a "digital Balochistan horizon" in the brand palette. It fills
+          the right-hand space on desktop and sits softly behind the text on phones. */}
+      <motion.img
+        src="/hero-horizon.svg"
+        alt=""
+        aria-hidden
+        initial={{ opacity: 0, scale: 1.06 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 1.8, ease }}
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[78%] w-full select-none object-cover object-bottom opacity-30 sm:opacity-40 lg:left-auto lg:right-0 lg:top-0 lg:h-full lg:w-[52%] lg:object-contain lg:opacity-70"
+      />
 
       <div className="relative grid items-center gap-10 lg:grid-cols-[1.25fr_1fr]">
-        <div>
+        {/* min-w-0: without it the grid column cannot shrink below the widest word
+            ("Balochistan"), which pushed the heading and search box off-screen on phones. */}
+        <div className="min-w-0">
           <motion.span
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -142,7 +186,7 @@ function Hero() {
               "DigiBizz Balochistan opportunities"
             )}
           </motion.span>
-          <h2 className="mt-5 font-display text-[40px] font-bold leading-[1.02] tracking-[-0.04em] sm:text-6xl xl:text-7xl">
+          <h2 className="mt-5 font-display text-[clamp(30px,8.5vw,40px)] font-bold leading-[1.04] tracking-[-0.04em] sm:text-6xl xl:text-7xl">
             <WordReveal text="Find work that moves Balochistan forward." highlight={["Balochistan"]} delay={0.1} />
           </h2>
           <motion.p
@@ -154,16 +198,7 @@ function Hero() {
             The official DigiBizz Balochistan portal for our own jobs, internships, programs & courses and trainings — one profile, one place to apply.
           </motion.p>
           <SearchConsole />
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="mt-4 flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
-            Popular:
-            {["React", "Cybersecurity", "Freelancing", "Data", "DevOps"].map((s, i) => (
-              <motion.span key={s} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 + i * 0.06 }}>
-                <Link to={`/jobs?q=${encodeURIComponent(s)}`} className="rounded-full border border-line px-2.5 py-1 transition-colors hover:border-brand hover:text-brand">
-                  {s}
-                </Link>
-              </motion.span>
-            ))}
-          </motion.div>
+          <PopularSearches />
         </div>
         <FloatingStack />
       </div>
@@ -244,7 +279,7 @@ function Featured() {
           value={type}
           onChange={setType}
           size="sm"
-          className="max-w-full overflow-x-auto scrollbar-none"
+          className="mask-fade-x max-w-full overflow-x-auto scrollbar-none"
           options={[{ value: "all" as const, label: "Featured" }, ...OPPORTUNITY_TYPES.map((t) => ({ value: t, label: OPPORTUNITY_TYPE_META[t].plural }))]}
         />
       </Reveal>

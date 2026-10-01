@@ -5,6 +5,7 @@ import {
   Briefcase,
   Chalkboard,
   ChartPieSlice,
+  Gear,
   GraduationCap,
   House,
   IdentificationCard,
@@ -29,6 +30,8 @@ const Apply = lazy(() => import("@/pages/public/Apply"));
 const NotFound = lazy(() => import("@/pages/public/NotFound"));
 const Login = lazy(() => import("@/pages/auth/Login"));
 const Register = lazy(() => import("@/pages/auth/Register"));
+const ForgotPassword = lazy(() => import("@/pages/auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/auth/ResetPassword"));
 const MyDashboard = lazy(() => import("@/pages/account/Dashboard"));
 const Saved = lazy(() => import("@/pages/account/Saved"));
 const Profile = lazy(() => import("@/pages/account/Profile"));
@@ -38,6 +41,7 @@ const AdminOpportunityEditor = lazy(() => import("@/pages/admin/OpportunityEdito
 const AdminApplications = lazy(() => import("@/pages/admin/Applications"));
 const AdminCandidates = lazy(() => import("@/pages/admin/Candidates"));
 const AdminApiKeys = lazy(() => import("@/pages/admin/ApiKeys"));
+const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
 
 const i = "size-5";
 
@@ -92,6 +96,7 @@ function AdminShell() {
         { to: "/admin/applications", label: "Applications", icon: <Tray className={i} /> },
         { to: "/admin/candidates", label: "Candidates", icon: <UsersThree className={i} /> },
         { to: "/admin/api-keys", label: "Partner API", icon: <Key className={i} /> },
+        { to: "/admin/settings", label: "Settings", icon: <Gear className={i} /> },
       ],
     },
     { title: "Portal", items: [{ to: "/", label: "View portal", icon: <House className={i} />, end: true }] },
@@ -110,6 +115,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           <Route
             path="/admin"
@@ -126,6 +133,7 @@ export default function App() {
             <Route path="applications" element={<AdminApplications />} />
             <Route path="candidates" element={<AdminCandidates />} />
             <Route path="api-keys" element={<AdminApiKeys />} />
+            <Route path="settings" element={<AdminSettings />} />
           </Route>
 
           <Route element={<PortalShell />}>

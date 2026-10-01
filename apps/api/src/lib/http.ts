@@ -40,7 +40,9 @@ export function parse<T extends ZodType>(schema: T, data: unknown): z.output<T> 
   return result.data;
 }
 
-export const body = <T extends ZodType>(req: Request, schema: T) => parse(schema, req.body);
+// `?? {}` because Express leaves req.body undefined when a request carries no
+// JSON body at all (common for DELETE), and every schema here is an object.
+export const body = <T extends ZodType>(req: Request, schema: T) => parse(schema, req.body ?? {});
 export const query = <T extends ZodType>(req: Request, schema: T) => parse(schema, req.query);
 
 export function objectIdParam(req: Request, name = "id"): string {

@@ -6,6 +6,8 @@ import {
   apiKeyCreateSchema,
   APPLICATION_STATUSES,
   applicationStatusSchema,
+  deleteOpportunitySchema,
+  type DeleteOpportunityResult,
   OPPORTUNITY_STATUSES,
   OPPORTUNITY_TYPES,
   opportunitySchema,
@@ -14,10 +16,11 @@ import {
   type OpportunityType,
 } from "@digibizz/jobs-shared";
 import { currentUser, requireAuth, requireRole } from "../lib/auth";
-import { body, conflict, escapeRegex, notFound, objectIdParam, query } from "../lib/http";
-import { RESUME_DIR, sendStoredFile } from "../lib/uploads";
-import { ApiKeyModel, ApiUsageModel, ApplicationModel, OpportunityModel, UserModel } from "../models";
+import { badRequest, body, conflict, escapeRegex, notFound, objectIdParam, query } from "../lib/http";
+import { removeFile, RESUME_DIR, sendStoredFile } from "../lib/uploads";
+import { ApiKeyModel, ApiUsageModel, ApplicationModel, OpportunityModel, UserModel, type OpportunityDoc, type UserDoc } from "../models";
 import { toApiKeyDTO, toApplicationDTO, toOpportunityDTO, toUserDTO } from "../serializers";
+import { sendApplicationStatusEmail } from "../services/email";
 import { hashApiKey } from "../partner/auth";
 import { inputToDoc, searchFilter, startOfTodayUTC, uniqueSlug } from "../services/opportunities";
 
@@ -176,14 +179,48 @@ adminRouter.post("/opportunities/:id/duplicate", async (req, res) => {
   res.status(201).json(toOpportunityDTO(doc));
 });
 
+/**
+ * Delete an opportunity. When it has applications the caller must opt in with
+ * `deleteApplications` and retype the exact title, because this also removes
+ * every candidate's application and their submitted resume copies.
+ */
 adminRouter.delete("/opportunities/:id", async (req, res) => {
   const id = objectIdParam(req);
-  if (await ApplicationModel.exists({ opportunity: id })) {
-    throw conflict("This opportunity has applications. Close it instead of deleting it.");
+  const input = body(req, deleteOpportunitySchema.partial({ confirmTitle: true }));
+  const doc = await OpportunityModel.findById(id);
+  if (!doc) throw notFound("Opportunity");
+
+  const applications = await ApplicationModel.countDocuments({ opportunity: id });
+  if (applications > 0) {
+    if (!input.deleteApplications) {
+      throw conflict(
+        `This has ${applications} application${applications === 1 ? "" : "s"}. Close it instead, or confirm deleting the applications too.`,
+      );
+    }
+    if ((input.confirmTitle ?? "").trim() !== doc.title.trim()) {
+      throw badRequest("The title you typed does not match", { confirmTitle: "Type the title exactly as shown" });
+    }
   }
-  const result = await OpportunityModel.deleteOne({ _id: id });
-  if (!result.deletedCount) throw notFound("Opportunity");
-  res.status(204).end();
+
+  // Remove resume copies that belong only to these applications; a candidate's
+  // own profile resume (same stored file) is kept.
+  const docs = await ApplicationModel.find({ opportunity: id }).select("resume user");
+  for (const a of docs) {
+    const stored = a.resume?.storedName;
+    if (!stored) continue;
+    const [usedElsewhere, onProfile] = await Promise.all([
+      ApplicationModel.exists({ "resume.storedName": stored, opportunity: { $ne: id } }),
+      UserModel.exists({ "resume.storedName": stored }),
+    ]);
+    if (!usedElsewhere && !onProfile) removeFile(RESUME_DIR, stored);
+  }
+
+  const deleted = await ApplicationModel.deleteMany({ opportunity: id });
+  await UserModel.updateMany({ saved: id }, { $pull: { saved: id } });
+  await OpportunityModel.deleteOne({ _id: id });
+
+  const result: DeleteOpportunityResult = { deletedApplications: deleted.deletedCount ?? 0 };
+  res.json(result);
 });
 
 /* ---------------------------------------------------------- applications */
@@ -224,10 +261,17 @@ adminRouter.patch("/applications/:id/status", async (req, res) => {
   const input = body(req, applicationStatusSchema);
   const app = await ApplicationModel.findById(objectIdParam(req));
   if (!app) throw notFound("Application");
+  const changed = app.status !== input.status;
   app.status = input.status;
   app.history.push({ status: input.status, note: input.note, at: new Date(), by: currentUser(req)._id });
   await app.save();
   await app.populate(["opportunity", "user"]);
+
+  if (changed) {
+    const candidate = app.user as unknown as UserDoc | null;
+    const opp = app.opportunity as unknown as OpportunityDoc | null;
+    if (candidate?.email && opp?.title) void sendApplicationStatusEmail(candidate, opp, input.status, input.note);
+  }
   res.json(toApplicationDTO(app, { withCandidate: true }));
 });
 

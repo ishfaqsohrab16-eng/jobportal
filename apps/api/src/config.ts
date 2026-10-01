@@ -25,6 +25,18 @@ const schema = z
     ADMIN_EMAIL: z.email().optional(),
     ADMIN_PASSWORD: z.string().min(8).optional(),
     TRUST_PROXY: z.coerce.number().int().min(0).default(1),
+
+    /* Email (Brevo). Without BREVO_API_KEY the app runs normally and simply sends nothing. */
+    BREVO_API_KEY: z.string().trim().min(1).optional(),
+    BREVO_SENDER_EMAIL: z.email().default("noreply@digibizz.gob.pk"),
+    BREVO_SENDER_NAME: z.string().default("DigiBizz Balochistan"),
+    BREVO_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(15_000),
+    /** Where replies to our emails should go. Defaults to no reply-to header. */
+    BREVO_REPLY_TO: z.email().optional(),
+    /** Who gets "new application" alerts. Defaults to ADMIN_EMAIL; set to "off" to disable. */
+    ADMIN_NOTIFY_EMAIL: z.string().trim().optional(),
+    /** How long a password-reset link stays valid. */
+    RESET_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(1_440).default(60),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production") {
@@ -55,4 +67,6 @@ export const config = {
   publicWebUrl: env.PUBLIC_WEB_URL.replace(/\/+$/, ""),
   uploadDir: path.resolve(env.UPLOAD_DIR),
   webDistDir: env.WEB_DIST_DIR ? path.resolve(env.WEB_DIST_DIR) : null,
+  adminNotifyEmail:
+    env.ADMIN_NOTIFY_EMAIL === "off" ? null : (env.ADMIN_NOTIFY_EMAIL || env.ADMIN_EMAIL || null),
 };

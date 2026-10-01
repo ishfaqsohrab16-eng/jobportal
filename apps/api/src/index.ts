@@ -2,10 +2,12 @@ import { config } from "./config";
 import { createApp } from "./app";
 import { connectDb, disconnectDb } from "./db";
 import { ensureAdmin } from "./services/bootstrap";
+import { reportEmailSetup } from "./services/email";
 
 async function main() {
   await connectDb();
   await ensureAdmin();
+  void reportEmailSetup();
   const server = createApp().listen(config.PORT, () => {
     console.log(`DigiBizz Jobs API listening on :${config.PORT} (${config.NODE_ENV})`);
   });

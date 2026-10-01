@@ -19,7 +19,8 @@ import {
 import { useDebouncedValue, useToast, useUrlFilters } from "@/hooks";
 import { useShellHeader } from "@/components/layout/ShellContext";
 import { PublisherMark, TypeBadge } from "@/components/opportunity";
-import { Badge, ButtonLink, ConfirmDialog, EmptyState, Input, Pagination, Segmented, Select, Skeleton } from "@/components/ui";
+import { Badge, ButtonLink, EmptyState, Input, Pagination, Segmented, Select, Skeleton } from "@/components/ui";
+import { DeleteOpportunityDialog } from "@/components/admin/DeleteOpportunityDialog";
 import { errorMessage } from "@/lib/errors";
 import { cn } from "@/lib/cn";
 
@@ -147,7 +148,6 @@ export default function Opportunities() {
   }, [q]);
   const page = Number(values.page) || 1;
   const { data, isLoading, isFetching } = useAdminOpportunitiesQuery({ ...values, page, limit: 15 });
-  const [del, { isLoading: deleting }] = useDeleteOpportunityMutation();
   const [toDelete, setToDelete] = useState<OpportunityDTO | null>(null);
   const toast = useToast();
 
@@ -264,25 +264,7 @@ export default function Opportunities() {
         </div>
       </div>
 
-      <ConfirmDialog
-        open={!!toDelete}
-        onClose={() => setToDelete(null)}
-        title="Delete opportunity?"
-        body={toDelete ? `“${toDelete.title}” will be permanently deleted. Opportunities with applications can only be closed.` : undefined}
-        confirmLabel="Delete"
-        danger
-        loading={deleting}
-        onConfirm={async () => {
-          if (!toDelete) return;
-          try {
-            await del(toDelete.id).unwrap();
-            toast.success("Deleted");
-          } catch (err) {
-            toast.error("Couldn't delete", errorMessage(err));
-          }
-          setToDelete(null);
-        }}
-      />
+      <DeleteOpportunityDialog opportunity={toDelete} onClose={() => setToDelete(null)} />
     </div>
   );
 }

@@ -1,6 +1,11 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type {
   AdminOverview,
+  ChangePasswordInput,
+  DeleteOpportunityInput,
+  DeleteOpportunityResult,
+  ForgotPasswordInput,
+  ResetPasswordInput,
   ApiKeyCreateInput,
   ApiKeyDTO,
   ApplicationDTO,
@@ -61,8 +66,15 @@ export const api = createApi({
       invalidatesTags: ["Me"],
     }),
     logout: b.mutation<void, void>({ query: () => ({ url: "/auth/logout", method: "POST" }) }),
-    changePassword: b.mutation<void, { currentPassword: string; newPassword: string }>({
+    changePassword: b.mutation<void, ChangePasswordInput>({
       query: (body) => ({ url: "/auth/password", method: "POST", body }),
+    }),
+    forgotPassword: b.mutation<{ message: string }, ForgotPasswordInput>({
+      query: (body) => ({ url: "/auth/forgot-password", method: "POST", body }),
+    }),
+    resetPassword: b.mutation<{ user: UserDTO }, ResetPasswordInput>({
+      query: (body) => ({ url: "/auth/reset-password", method: "POST", body }),
+      invalidatesTags: ["Me"],
     }),
 
     /* ---------------------------------------------------------- candidate */
@@ -119,9 +131,9 @@ export const api = createApi({
       query: (id) => ({ url: `/admin/opportunities/${id}/duplicate`, method: "POST" }),
       invalidatesTags: ["Opportunity"],
     }),
-    deleteOpportunity: b.mutation<void, string>({
-      query: (id) => ({ url: `/admin/opportunities/${id}`, method: "DELETE" }),
-      invalidatesTags: ["Opportunity", "Stats", "Overview"],
+    deleteOpportunity: b.mutation<DeleteOpportunityResult, { id: string } & DeleteOpportunityInput>({
+      query: ({ id, ...body }) => ({ url: `/admin/opportunities/${id}`, method: "DELETE", body }),
+      invalidatesTags: ["Opportunity", "Stats", "Overview", "Application"],
     }),
     adminApplications: b.query<Paginated<ApplicationDTO>, Params>({
       query: (params) => ({ url: "/admin/applications", params: clean(params) }),
@@ -162,6 +174,8 @@ export const {
   useRegisterMutation,
   useLogoutMutation,
   useChangePasswordMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
   useUpdateProfileMutation,
   useUploadResumeMutation,
   useDeleteResumeMutation,

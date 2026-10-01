@@ -358,8 +358,9 @@ export function Shell({
     <ShellHeaderProvider>
       <ScrollProgress />
       <div className="flex min-h-dvh gap-0 p-0 sm:p-2 lg:gap-2">
-        {/* Icon rail */}
-        <aside className="sticky top-2 hidden h-[calc(100dvh-1rem)] w-[68px] shrink-0 flex-col items-center py-3 lg:flex">
+        {/* Icon rail. z-30 keeps the account menu and the hover tooltips above the
+            main panel, which clips its own content and paints after this in the DOM. */}
+        <aside className="sticky top-2 z-30 hidden h-[calc(100dvh-1rem)] w-[68px] shrink-0 flex-col items-center py-3 lg:flex">
           <Link to="/" aria-label="DigiBizz Jobs home" className="mb-6">
             <LogoMark size={38} />
           </Link>
@@ -384,7 +385,7 @@ export function Shell({
           initial={{ opacity: 0, scale: 0.99, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.7, ease }}
-          className="relative flex min-h-dvh min-w-0 flex-1 flex-col overflow-hidden border-line bg-paper pb-24 sm:min-h-[calc(100dvh-1rem)] sm:rounded-[22px] sm:border lg:pb-0"
+          className="relative z-0 flex min-h-dvh min-w-0 flex-1 flex-col overflow-hidden border-line bg-paper pb-24 sm:min-h-[calc(100dvh-1rem)] sm:rounded-[22px] sm:border lg:pb-0"
         >
           {/* Soft arc of light across the top-right corner, like the reference. */}
           <div aria-hidden className="pointer-events-none absolute -top-40 right-[-10%] h-64 w-[55%] rounded-[100%] bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--ink)_9%,transparent),transparent)]" />

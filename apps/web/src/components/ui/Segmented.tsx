@@ -13,6 +13,7 @@ export function Segmented<T extends string>({
   size = "md",
   className,
   ariaLabel,
+  fluid,
 }: {
   value: T;
   onChange: (v: T) => void;
@@ -20,10 +21,20 @@ export function Segmented<T extends string>({
   size?: "sm" | "md";
   className?: string;
   ariaLabel?: string;
+  /** Fill the available width and wrap onto more rows instead of overflowing. */
+  fluid?: boolean;
 }) {
   const layoutId = useId();
   return (
-    <div role="tablist" aria-label={ariaLabel} className={cn("inline-flex items-center gap-0.5 rounded-xl bg-well p-1", className)}>
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      className={cn(
+        "items-center gap-0.5 rounded-xl bg-well p-1",
+        fluid ? "flex w-full flex-wrap" : "inline-flex",
+        className,
+      )}
+    >
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -34,8 +45,9 @@ export function Segmented<T extends string>({
             aria-selected={active}
             onClick={() => onChange(o.value)}
             className={cn(
-              "relative inline-flex items-center gap-1.5 whitespace-nowrap font-medium transition-colors",
+              "relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap font-medium transition-colors",
               size === "sm" ? "h-7 rounded-lg px-2.5 text-[12.5px]" : "h-8 rounded-lg px-3.5 text-[13px]",
+              fluid && "min-w-[calc(50%-0.125rem)] flex-1 sm:min-w-0",
               active ? "text-ink" : "text-muted hover:text-ink-soft",
             )}
           >

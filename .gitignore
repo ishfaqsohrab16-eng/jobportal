@@ -4,9 +4,9 @@ coverage
 .env
 .env.*
 !.env.example
-.data
-uploads/*
-!uploads/.gitkeep
+# Uploaded resumes and local databases, at any depth.
+**/.data/
+**/uploads/
 *.log
 .DS_Store
 .vite

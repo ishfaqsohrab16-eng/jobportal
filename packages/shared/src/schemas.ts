@@ -62,6 +62,25 @@ export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: passwordSchema,
 });
+export type ChangePasswordInput = z.input<typeof changePasswordSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.email("Enter a valid email").trim().toLowerCase(),
+});
+export type ForgotPasswordInput = z.input<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z.object({
+  token: z.string().trim().min(20, "This reset link is not valid").max(200),
+  password: passwordSchema,
+});
+export type ResetPasswordInput = z.input<typeof resetPasswordSchema>;
+
+/** Deleting an opportunity together with its applications: the typed title must match. */
+export const deleteOpportunitySchema = z.object({
+  confirmTitle: z.string().min(1, "Type the title to confirm"),
+  deleteApplications: z.boolean().default(false),
+});
+export type DeleteOpportunityInput = z.input<typeof deleteOpportunitySchema>;
 
 /* ------------------------------------------------------- opportunities */
 

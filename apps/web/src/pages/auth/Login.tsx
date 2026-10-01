@@ -60,7 +60,15 @@ export default function Login() {
         <Field label="Email" error={formState.errors.email?.message}>
           {(id) => <Input id={id} type="email" autoComplete="email" placeholder="you@example.com" leading={<Envelope className="size-4" />} invalid={!!formState.errors.email} {...register("email")} autoFocus />}
         </Field>
-        <Field label="Password" error={formState.errors.password?.message}>
+        <Field
+          label="Password"
+          hint={
+            <Link to="/forgot-password" className="font-medium text-brand hover:underline">
+              Forgot password?
+            </Link>
+          }
+          error={formState.errors.password?.message}
+        >
           {(id) => {
             const reg = register("password");
             return (
