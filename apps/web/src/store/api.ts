@@ -9,6 +9,7 @@ import type {
   ApiKeyCreateInput,
   ApiKeyDTO,
   ApplicationDTO,
+  ApplicationFacets,
   ApplicationStatus,
   ApplyInput,
   LoginInput,
@@ -139,6 +140,7 @@ export const api = createApi({
       query: (params) => ({ url: "/admin/applications", params: clean(params) }),
       providesTags: ["Application"],
     }),
+    applicationFacets: b.query<ApplicationFacets, void>({ query: () => "/admin/applications/facets", providesTags: ["Application"] }),
     setApplicationStatus: b.mutation<ApplicationDTO, { id: string; status: ApplicationStatus; note?: string }>({
       query: ({ id, ...body }) => ({ url: `/admin/applications/${id}/status`, method: "PATCH", body }),
       invalidatesTags: ["Application", "Overview"],
@@ -193,6 +195,7 @@ export const {
   useDeleteOpportunityMutation,
   useAdminApplicationsQuery,
   useSetApplicationStatusMutation,
+  useApplicationFacetsQuery,
   useCandidatesQuery,
   useApiKeysQuery,
   useCreateApiKeyMutation,

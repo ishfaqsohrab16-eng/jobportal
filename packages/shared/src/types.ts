@@ -150,3 +150,9 @@ export interface AdminOverview {
   daily: { date: string; applications: number }[];
   recent: ApplicationDTO[];
 }
+
+export interface ApplicationFacets {
+  sources: string[];
+  cities: string[];
+  opportunities: { id: string; title: string; type: OpportunityType; status: OpportunityStatus; applications: number }[];
+}
