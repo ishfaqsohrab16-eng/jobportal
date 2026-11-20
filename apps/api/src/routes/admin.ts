@@ -4,7 +4,7 @@ import { Router } from "express";
 import { z } from "zod";
 import {
   apiKeyCreateSchema,
-  APPLICATION_STATUSES,
+  type ApplicationFacets,
   applicationStatusSchema,
   deleteOpportunitySchema,
   type DeleteOpportunityResult,
@@ -23,6 +23,20 @@ import { toApiKeyDTO, toApplicationDTO, toOpportunityDTO, toUserDTO } from "../s
 import { sendApplicationStatusEmail } from "../services/email";
 import { hashApiKey } from "../partner/auth";
 import { inputToDoc, searchFilter, startOfTodayUTC, uniqueSlug } from "../services/opportunities";
+import {
+  applicationFilterSchema,
+  applicationSort,
+  buildApplicationFilter,
+  buildCandidateFilter,
+  candidateFilterSchema,
+  EXPORT_MAX_ROWS,
+  findForExport,
+  sendCandidatesSheet,
+  sendResumeZip,
+  sendSpreadsheet,
+  sortByName,
+} from "../services/applicationExport";
+import { config } from "../config";
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole("admin"));
@@ -225,36 +239,65 @@ adminRouter.delete("/opportunities/:id", async (req, res) => {
 
 /* ---------------------------------------------------------- applications */
 
-const appQuery = z.object({
-  opportunity: z.string().regex(/^[a-f\d]{24}$/i).optional(),
-  status: z.enum(APPLICATION_STATUSES).optional(),
-  source: z.string().trim().max(40).optional(),
-  q: z.string().trim().max(100).optional(),
-  page,
-  limit,
-});
+const appQuery = applicationFilterSchema.extend({ page, limit });
 
 adminRouter.get("/applications", async (req, res) => {
   const q = query(req, appQuery);
-  const filter: Record<string, unknown> = {};
-  if (q.opportunity) filter.opportunity = q.opportunity;
-  if (q.status) filter.status = q.status;
-  if (q.source) filter.source = q.source;
-  if (q.q) {
-    const rx = new RegExp(escapeRegex(q.q), "i");
-    const users = await UserModel.find({ $or: [{ name: rx }, { email: rx }] }).select("_id").limit(500);
-    filter.user = { $in: users.map((u) => u._id) };
+  const filter = await buildApplicationFilter(q);
+  if (!filter) {
+    res.json(paginate([], q.page, q.limit, 0));
+    return;
   }
+  const find = () => ApplicationModel.find(filter).populate("opportunity").populate("user");
   const [docs, total] = await Promise.all([
-    ApplicationModel.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((q.page - 1) * q.limit)
-      .limit(q.limit)
-      .populate("opportunity")
-      .populate("user"),
+    q.sort === "name"
+      ? // Name lives on the user, so sort the (capped) match set in memory, then page.
+        find()
+          .limit(EXPORT_MAX_ROWS)
+          .then((all) => sortByName(all).slice((q.page - 1) * q.limit, q.page * q.limit))
+      : find()
+          .sort(applicationSort(q.sort))
+          .skip((q.page - 1) * q.limit)
+          .limit(q.limit),
     ApplicationModel.countDocuments(filter),
   ]);
   res.json(paginate(docs.map((a) => toApplicationDTO(a, { withCandidate: true })), q.page, q.limit, total));
+});
+
+/** Values for the filter dropdowns: every source and city seen, plus the opportunities that have applications. */
+adminRouter.get("/applications/facets", async (_req, res) => {
+  const [sources, appCities, userCities, oppIds] = await Promise.all([
+    ApplicationModel.distinct("source"),
+    ApplicationModel.distinct("city"),
+    UserModel.distinct("city", { role: "candidate" }),
+    ApplicationModel.distinct("opportunity"),
+  ]);
+  const opps = await OpportunityModel.find({ _id: { $in: oppIds } })
+    .select("title type status applicationsCount")
+    .sort({ updatedAt: -1 });
+  const facets: ApplicationFacets = {
+    sources: (sources as string[]).filter(Boolean).sort(),
+    cities: [...new Set([...(appCities as string[]), ...(userCities as string[])].map((c) => c.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    opportunities: opps.map((o) => ({ id: o.id, title: o.title, type: o.type, status: o.status, applications: o.applicationsCount })),
+  };
+  res.json(facets);
+});
+
+const exportQuery = applicationFilterSchema.extend({ format: z.enum(["xlsx", "csv"]).default("xlsx") });
+
+/** Excel or CSV of every application matching the current filters. */
+adminRouter.get("/applications/export", async (req, res) => {
+  const q = query(req, exportQuery);
+  const docs = await findForExport(q);
+  await sendSpreadsheet(res, docs, q.format, (id) => `${config.publicWebUrl}/api/admin/applications/${id}/resume`);
+});
+
+/** ZIP of every matching resume, grouped by opportunity, with an applications.xlsx index. */
+adminRouter.get("/applications/resumes.zip", async (req, res) => {
+  const q = query(req, applicationFilterSchema);
+  const docs = await findForExport(q);
+  if (!docs.some((a) => a.resume)) throw notFound("Resumes for these filters");
+  await sendResumeZip(res, docs);
 });
 
 adminRouter.patch("/applications/:id/status", async (req, res) => {
@@ -286,14 +329,19 @@ adminRouter.get("/applications/:id/resume", async (req, res, next) => {
 /* ------------------------------------------------------------ candidates */
 
 adminRouter.get("/candidates", async (req, res) => {
-  const q = query(req, z.object({ q: z.string().trim().max(100).optional(), page, limit }));
-  const rx = q.q ? new RegExp(escapeRegex(q.q), "i") : null;
-  const filter = { role: "candidate", ...(rx ? { $or: [{ name: rx }, { email: rx }, { skills: rx }, { city: rx }] } : {}) };
+  const q = query(req, candidateFilterSchema.extend({ page, limit }));
+  const filter = buildCandidateFilter(q);
   const [docs, total] = await Promise.all([
     UserModel.find(filter).sort({ createdAt: -1 }).skip((q.page - 1) * q.limit).limit(q.limit),
     UserModel.countDocuments(filter),
   ]);
   res.json(paginate(docs.map(toUserDTO), q.page, q.limit, total));
+});
+
+adminRouter.get("/candidates/export", async (req, res) => {
+  const q = query(req, candidateFilterSchema.extend({ format: z.enum(["xlsx", "csv"]).default("xlsx") }));
+  const users = await UserModel.find(buildCandidateFilter(q)).sort({ createdAt: -1 }).limit(EXPORT_MAX_ROWS);
+  await sendCandidatesSheet(res, users, q.format);
 });
 
 /* -------------------------------------------------------------- api keys */

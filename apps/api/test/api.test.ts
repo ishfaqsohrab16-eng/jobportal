@@ -181,6 +181,59 @@ describe("applying", () => {
   });
 });
 
+describe("application filters and exports", () => {
+  const binary = (res: request.Response, cb: (err: Error | null, body: Buffer) => void) => {
+    const stream = res as unknown as NodeJS.ReadableStream;
+    const chunks: Buffer[] = [];
+    stream.on("data", (c: Buffer) => chunks.push(c));
+    stream.on("end", () => cb(null, Buffer.concat(chunks)));
+  };
+
+  it("filters by type, status, resume, dates and search", async () => {
+    const today = day(0);
+    const ok = async (qs: string) => (await admin.get(`/api/admin/applications?${qs}`).expect(200)).body.total;
+    expect(await ok("type=job")).toBe(1);
+    expect(await ok("type=training")).toBe(0);
+    expect(await ok("status=shortlisted,interview")).toBe(1);
+    expect(await ok("status=hired")).toBe(0);
+    expect(await ok("resume=yes")).toBe(1);
+    expect(await ok("resume=no")).toBe(0);
+    expect(await ok(`from=${today}&to=${today}`)).toBe(1);
+    expect(await ok(`to=${day(-2)}`)).toBe(0);
+    expect(await ok("q=ayesha&sort=name")).toBe(1);
+    expect(await ok("q=nobody-here")).toBe(0);
+    expect(await ok("source=industechconnect")).toBe(1);
+    await admin.get("/api/admin/applications?status=bogus").expect(400);
+
+    const facets = await admin.get("/api/admin/applications/facets").expect(200);
+    expect(facets.body.sources).toContain("industechconnect");
+    expect(facets.body.opportunities[0].title).toBe("Backend Engineer");
+  });
+
+  it("exports Excel, CSV and a resume ZIP for the current filters", async () => {
+    const xlsx = await admin.get("/api/admin/applications/export?type=job").buffer(true).parse(binary).expect(200);
+    expect(xlsx.headers["content-type"]).toContain("spreadsheetml");
+    expect((xlsx.body as Buffer).subarray(0, 2).toString()).toBe("PK");
+
+    const csv = await admin.get("/api/admin/applications/export?format=csv").expect(200);
+    expect(csv.text).toContain("Ayesha Baloch");
+    expect(csv.text).toContain("Backend Engineer");
+
+    const zip = await admin.get("/api/admin/applications/resumes.zip").buffer(true).parse(binary).expect(200);
+    expect(zip.headers["content-type"]).toContain("zip");
+    const body = (zip.body as Buffer).toString("latin1");
+    expect(body).toContain("applications.xlsx");
+    expect(body).toContain("resumes/Backend Engineer/Ayesha Baloch.pdf");
+
+    await admin.get("/api/admin/applications/resumes.zip?type=training").expect(404);
+    await candidate.get("/api/admin/applications/export").expect(403);
+
+    const people = await admin.get("/api/admin/candidates/export?format=csv&resume=yes").expect(200);
+    expect(people.text).toContain("ayesha@test.pk");
+    expect((await admin.get("/api/admin/candidates?resume=no").expect(200)).body.total).toBe(0);
+  });
+});
+
 describe("partner API", () => {
   let secret: string;
   let keyId: string;

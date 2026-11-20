@@ -1,33 +1,113 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { FilePdf, MagnifyingGlass, UsersThree } from "@phosphor-icons/react";
+import { DownloadSimple, FileCsv, FilePdf, FileXls, MagnifyingGlass, UsersThree } from "@phosphor-icons/react";
 import { formatDate } from "@digibizz/jobs-shared";
-import { useCandidatesQuery } from "@/store/api";
-import { useDebouncedValue } from "@/hooks";
+import { useApplicationFacetsQuery, useCandidatesQuery } from "@/store/api";
+import { useDebouncedValue, useToast, useUrlFilters } from "@/hooks";
 import { useShellHeader } from "@/components/layout/ShellContext";
-import { Avatar, Badge, EmptyState, Input, Pagination, Skeleton } from "@/components/ui";
+import { Avatar, Badge, Button, EmptyState, Input, Pagination, Select, Skeleton, Spinner } from "@/components/ui";
+import { apiUrl, downloadFromApi } from "@/lib/download";
+import { errorMessage } from "@/lib/errors";
+
+const KEYS = ["q", "city", "skill", "resume", "minExperience", "page"] as const;
 
 export default function Candidates() {
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const { values, set, clear } = useUrlFilters(KEYS);
+  const [search, setSearch] = useState(values.q);
+  const [skill, setSkill] = useState(values.skill);
   const q = useDebouncedValue(search, 300);
-  const { data, isLoading, isFetching } = useCandidatesQuery({ q, page, limit: 20 });
-  useShellHeader({ title: "Candidates", subtitle: data ? `${data.total} registered` : "Registered job seekers" }, [data?.total]);
+  const skillQ = useDebouncedValue(skill, 300);
+  useEffect(() => {
+    if (q !== values.q || skillQ !== values.skill) set({ q, skill: skillQ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, skillQ]);
+  const page = Number(values.page) || 1;
+  const { data, isLoading, isFetching } = useCandidatesQuery({ ...values, page, limit: 20 });
+  const { data: facets } = useApplicationFacetsQuery();
+  const [busy, setBusy] = useState<"xlsx" | "csv" | null>(null);
+  const toast = useToast();
+  const filtered = Object.entries(values).some(([k, v]) => k !== "page" && v);
+
+  const exportAs = async (format: "xlsx" | "csv") => {
+    setBusy(format);
+    try {
+      const { page: _p, ...params } = values;
+      await downloadFromApi(apiUrl("/admin/candidates/export", { ...params, format }), `candidates.${format}`);
+    } catch (err) {
+      toast.error("Couldn't download", errorMessage(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  useShellHeader(
+    {
+      title: "Candidates",
+      subtitle: data ? `${data.total} ${filtered ? "matching" : "registered"}` : "Registered job seekers",
+      actions: (
+        <div className="flex gap-2">
+          <Button variant="primary" size="sm" disabled={!!busy || !data?.total} icon={busy === "xlsx" ? <Spinner className="size-4" /> : <FileXls weight="bold" className="size-4" />} onClick={() => exportAs("xlsx")}>
+            <span className="hidden sm:inline">Export Excel</span>
+            <span className="sm:hidden">Excel</span>
+          </Button>
+          <Button variant="secondary" size="sm" disabled={!!busy || !data?.total} icon={busy === "csv" ? <Spinner className="size-4" /> : <FileCsv weight="bold" className="size-4" />} onClick={() => exportAs("csv")}>
+            CSV
+          </Button>
+        </div>
+      ),
+    },
+    [data?.total, busy, filtered, values],
+  );
 
   return (
     <div className="px-4 py-6 sm:px-6">
       <div className="panel p-4 sm:p-5">
-        <div className="mb-4">
-          <Input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Search by name, email, skill or city"
-            leading={<MagnifyingGlass className="size-4" />}
-            className="h-10"
-          />
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="min-w-0 flex-1 basis-56">
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, email, phone, skill or city" leading={<MagnifyingGlass className="size-4" />} className="h-10" />
+          </div>
+          <div className="w-40">
+            <Input value={skill} onChange={(e) => setSkill(e.target.value)} placeholder="Skill e.g. React" className="h-10" aria-label="Skill" />
+          </div>
+          <div className="w-36">
+            <Select value={values.city} onChange={(e) => set({ city: e.target.value })} className="h-10" aria-label="City">
+              <option value="">Any city</option>
+              {facets?.cities.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-36">
+            <Select value={values.resume} onChange={(e) => set({ resume: e.target.value })} className="h-10" aria-label="Resume">
+              <option value="">Any resume</option>
+              <option value="yes">Has a resume</option>
+              <option value="no">No resume</option>
+            </Select>
+          </div>
+          <div className="w-40">
+            <Select value={values.minExperience} onChange={(e) => set({ minExperience: e.target.value })} className="h-10" aria-label="Minimum experience">
+              <option value="">Any experience</option>
+              {[1, 2, 3, 5, 8, 10].map((n) => (
+                <option key={n} value={n}>
+                  {n}+ years
+                </option>
+              ))}
+            </Select>
+          </div>
+          {filtered && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                clear();
+                setSearch("");
+                setSkill("");
+              }}
+            >
+              Clear
+            </Button>
+          )}
         </div>
         <div className="hidden grid-cols-[1.6fr_1.6fr_0.8fr_0.7fr_0.8fr] gap-4 rounded-xl bg-well px-4 py-3 text-xs font-medium text-muted lg:grid">
           <span>Candidate</span>
@@ -50,7 +130,10 @@ export default function Candidates() {
                   <Avatar name={u.name} size={34} />
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{u.name}</span>
-                    <span className="block truncate text-xs text-muted">{u.email}</span>
+                    <span className="block truncate text-xs text-muted">
+                      {u.email}
+                      {u.experienceYears != null && ` · ${u.experienceYears} yrs`}
+                    </span>
                   </span>
                 </span>
                 <span className="flex flex-wrap gap-1">
@@ -66,10 +149,13 @@ export default function Candidates() {
             ))}
           </motion.ul>
         ) : (
-          <EmptyState className="mt-4" icon={<UsersThree className="size-7" />} title="No candidates found" />
+          <EmptyState className="mt-4" icon={<UsersThree className="size-7" />} title="No candidates found" body={filtered ? "Try removing some filters." : undefined} />
         )}
-        <div className="mt-5">
-          <Pagination page={page} totalPages={data?.totalPages ?? 1} onChange={setPage} />
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <p className="flex items-center gap-1.5 text-xs text-muted">
+            <DownloadSimple className="size-3.5" /> Exports use the filters above. For resumes, use Applications → Export.
+          </p>
+          <Pagination page={page} totalPages={data?.totalPages ?? 1} onChange={(p) => set({ page: String(p) })} />
         </div>
       </div>
     </div>
