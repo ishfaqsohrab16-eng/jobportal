@@ -3,6 +3,7 @@ import path from "node:path";
 import { Router } from "express";
 import { z } from "zod";
 import {
+  announcementSchema,
   apiKeyCreateSchema,
   type ApplicationFacets,
   applicationStatusSchema,
@@ -18,8 +19,8 @@ import {
 import { currentUser, requireAuth, requireRole } from "../lib/auth";
 import { badRequest, body, conflict, escapeRegex, notFound, objectIdParam, query } from "../lib/http";
 import { removeFile, RESUME_DIR, sendStoredFile } from "../lib/uploads";
-import { ApiKeyModel, ApiUsageModel, ApplicationModel, OpportunityModel, UserModel, type OpportunityDoc, type UserDoc } from "../models";
-import { toApiKeyDTO, toApplicationDTO, toOpportunityDTO, toUserDTO } from "../serializers";
+import { AnnouncementModel, ApiKeyModel, ApiUsageModel, ApplicationModel, OpportunityModel, UserModel, type OpportunityDoc, type UserDoc } from "../models";
+import { toAnnouncementDTO, toApiKeyDTO, toApplicationDTO, toOpportunityDTO, toUserDTO } from "../serializers";
 import { sendApplicationStatusEmail } from "../services/email";
 import { hashApiKey } from "../partner/auth";
 import { inputToDoc, searchFilter, startOfTodayUTC, uniqueSlug } from "../services/opportunities";
@@ -342,6 +343,49 @@ adminRouter.get("/candidates/export", async (req, res) => {
   const q = query(req, candidateFilterSchema.extend({ format: z.enum(["xlsx", "csv"]).default("xlsx") }));
   const users = await UserModel.find(buildCandidateFilter(q)).sort({ createdAt: -1 }).limit(EXPORT_MAX_ROWS);
   await sendCandidatesSheet(res, users, q.format);
+});
+
+/* --------------------------------------------------------- announcements */
+
+const announcementFields = (input: ReturnType<typeof announcementSchema.parse>) => ({
+  ...input,
+  startsAt: input.startsAt ? new Date(input.startsAt) : null,
+  endsAt: input.endsAt ? new Date(input.endsAt) : null,
+});
+
+adminRouter.get("/announcements", async (_req, res) => {
+  const docs = await AnnouncementModel.find().sort({ active: -1, updatedAt: -1 });
+  res.json(docs.map(toAnnouncementDTO));
+});
+
+adminRouter.post("/announcements", async (req, res) => {
+  const input = body(req, announcementSchema);
+  const doc = await AnnouncementModel.create({ ...announcementFields(input), createdBy: currentUser(req)._id });
+  res.status(201).json(toAnnouncementDTO(doc));
+});
+
+adminRouter.put("/announcements/:id", async (req, res) => {
+  const input = body(req, announcementSchema);
+  const doc = await AnnouncementModel.findById(objectIdParam(req));
+  if (!doc) throw notFound("Announcement");
+  doc.set(announcementFields(input));
+  await doc.save();
+  res.json(toAnnouncementDTO(doc));
+});
+
+adminRouter.patch("/announcements/:id/active", async (req, res) => {
+  const { active } = body(req, z.object({ active: z.boolean() }));
+  const doc = await AnnouncementModel.findById(objectIdParam(req));
+  if (!doc) throw notFound("Announcement");
+  doc.active = active;
+  await doc.save();
+  res.json(toAnnouncementDTO(doc));
+});
+
+adminRouter.delete("/announcements/:id", async (req, res) => {
+  const deleted = await AnnouncementModel.findByIdAndDelete(objectIdParam(req));
+  if (!deleted) throw notFound("Announcement");
+  res.status(204).end();
 });
 
 /* -------------------------------------------------------------- api keys */

@@ -1,5 +1,6 @@
 import mongoose, { Schema, type HydratedDocument, type InferSchemaType, type Types } from "mongoose";
 import {
+  ANNOUNCEMENT_TYPES,
   APPLICATION_STATUSES,
   EMPLOYMENT_TYPES,
   GENDERS,
@@ -175,3 +176,24 @@ apiUsageSchema.index({ key: 1, day: 1 }, { unique: true });
 export const ApiUsageModel = mongoose.model("ApiUsage", apiUsageSchema);
 
 export type Id = Types.ObjectId;
+
+/* ---------------------------------------------------------- announcement */
+
+const announcementSchema = new Schema(
+  {
+    type: { type: String, enum: ANNOUNCEMENT_TYPES, default: "announcement" },
+    title: str(),
+    message: { type: String, required: true, trim: true },
+    linkUrl: str(),
+    linkLabel: str(),
+    active: { type: Boolean, default: true, index: true },
+    dismissible: { type: Boolean, default: false },
+    startsAt: { type: Date, default: null },
+    endsAt: { type: Date, default: null },
+    createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+  },
+  { timestamps: true },
+);
+export type Announcement = InferSchemaType<typeof announcementSchema>;
+export type AnnouncementDoc = HydratedDocument<Announcement>;
+export const AnnouncementModel = mongoose.model("Announcement", announcementSchema);

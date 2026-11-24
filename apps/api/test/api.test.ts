@@ -234,6 +234,37 @@ describe("application filters and exports", () => {
   });
 });
 
+describe("announcements", () => {
+  it("lets admins publish, schedule, switch off and delete site-wide banners", async () => {
+    await candidate.post("/api/admin/announcements").send({ message: "Hi there" }).expect(403);
+    await admin.post("/api/admin/announcements").send({ message: "x" }).expect(400);
+    await admin.post("/api/admin/announcements").send({ message: "Bad link", linkUrl: "javascript:alert(1)" }).expect(400);
+
+    const live = await admin
+      .post("/api/admin/announcements")
+      .send({ type: "warning", title: "Heads up", message: "Portal maintenance on Sunday", linkUrl: "/jobs", linkLabel: "See jobs" })
+      .expect(201);
+    expect(live.body.live).toBe(true);
+    const later = await admin
+      .post("/api/admin/announcements")
+      .send({ message: "Next month only", startsAt: new Date(Date.now() + 30 * 86_400_000).toISOString() })
+      .expect(201);
+    expect(later.body.live).toBe(false);
+
+    let pub = await request(app).get("/api/announcements").expect(200);
+    expect(pub.body.map((a: { id: string }) => a.id)).toEqual([live.body.id]);
+    expect(pub.body[0].type).toBe("warning");
+
+    await admin.patch(`/api/admin/announcements/${live.body.id}/active`).send({ active: false }).expect(200);
+    pub = await request(app).get("/api/announcements").expect(200);
+    expect(pub.body).toEqual([]);
+
+    await admin.delete(`/api/admin/announcements/${live.body.id}`).expect(204);
+    await admin.delete(`/api/admin/announcements/${later.body.id}`).expect(204);
+    expect((await admin.get("/api/admin/announcements").expect(200)).body).toEqual([]);
+  });
+});
+
 describe("partner API", () => {
   let secret: string;
   let keyId: string;

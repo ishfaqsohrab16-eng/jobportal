@@ -1,6 +1,8 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type {
   AdminOverview,
+  AnnouncementDTO,
+  AnnouncementInput,
   ChangePasswordInput,
   DeleteOpportunityInput,
   DeleteOpportunityResult,
@@ -39,7 +41,7 @@ export interface Facets {
 export const api = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({ baseUrl: "/api", credentials: "include" }),
-  tagTypes: ["Me", "Opportunity", "Saved", "Application", "ApiKey", "Stats", "Overview", "Candidate"],
+  tagTypes: ["Me", "Opportunity", "Saved", "Application", "ApiKey", "Stats", "Overview", "Candidate", "Announcement"],
   endpoints: (b) => ({
     /* ------------------------------------------------------------ public */
     stats: b.query<PublicStats, void>({ query: () => "/stats", providesTags: ["Stats"] }),
@@ -149,6 +151,20 @@ export const api = createApi({
       query: (params) => ({ url: "/admin/candidates", params: clean(params) }),
       providesTags: ["Candidate"],
     }),
+    publicAnnouncements: b.query<AnnouncementDTO[], void>({ query: () => "/announcements", providesTags: ["Announcement"] }),
+    adminAnnouncements: b.query<AnnouncementDTO[], void>({ query: () => "/admin/announcements", providesTags: ["Announcement"] }),
+    saveAnnouncement: b.mutation<AnnouncementDTO, { id?: string; body: AnnouncementInput }>({
+      query: ({ id, body }) => ({ url: id ? `/admin/announcements/${id}` : "/admin/announcements", method: id ? "PUT" : "POST", body }),
+      invalidatesTags: ["Announcement"],
+    }),
+    setAnnouncementActive: b.mutation<AnnouncementDTO, { id: string; active: boolean }>({
+      query: ({ id, active }) => ({ url: `/admin/announcements/${id}/active`, method: "PATCH", body: { active } }),
+      invalidatesTags: ["Announcement"],
+    }),
+    deleteAnnouncement: b.mutation<void, string>({
+      query: (id) => ({ url: `/admin/announcements/${id}`, method: "DELETE" }),
+      invalidatesTags: ["Announcement"],
+    }),
     apiKeys: b.query<ApiKeyDTO[], void>({ query: () => "/admin/api-keys", providesTags: ["ApiKey"] }),
     createApiKey: b.mutation<{ key: ApiKeyDTO; secret: string }, ApiKeyCreateInput>({
       query: (body) => ({ url: "/admin/api-keys", method: "POST", body }),
@@ -197,6 +213,11 @@ export const {
   useSetApplicationStatusMutation,
   useApplicationFacetsQuery,
   useCandidatesQuery,
+  usePublicAnnouncementsQuery,
+  useAdminAnnouncementsQuery,
+  useSaveAnnouncementMutation,
+  useSetAnnouncementActiveMutation,
+  useDeleteAnnouncementMutation,
   useApiKeysQuery,
   useCreateApiKeyMutation,
   useRevokeApiKeyMutation,
