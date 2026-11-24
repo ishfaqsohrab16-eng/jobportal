@@ -9,11 +9,27 @@ import {
 } from "@digibizz/jobs-shared";
 import { optionalAuth } from "../lib/auth";
 import { notFound, query } from "../lib/http";
-import { ApplicationModel, OpportunityModel } from "../models";
-import { toOpportunityDTO } from "../serializers";
+import { AnnouncementModel, ApplicationModel, OpportunityModel } from "../models";
+import { toAnnouncementDTO, toOpportunityDTO } from "../serializers";
 import { buildListFilter, liveFilter, sortFor } from "../services/opportunities";
 
 export const publicRouter = Router();
+
+/** Site-wide banners that are switched on and inside their schedule. Shown on every page. */
+publicRouter.get("/announcements", async (_req, res) => {
+  const now = new Date();
+  const docs = await AnnouncementModel.find({
+    active: true,
+    $and: [
+      { $or: [{ startsAt: null }, { startsAt: { $lte: now } }] },
+      { $or: [{ endsAt: null }, { endsAt: { $gt: now } }] },
+    ],
+  })
+    .sort({ updatedAt: -1 })
+    .limit(5);
+  res.setHeader("Cache-Control", "no-store");
+  res.json(docs.map(toAnnouncementDTO));
+});
 
 publicRouter.get("/opportunities", async (req, res) => {
   const q = query(req, opportunityQuerySchema);

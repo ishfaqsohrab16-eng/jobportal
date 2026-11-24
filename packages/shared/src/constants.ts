@@ -184,3 +184,15 @@ export const PARTNER_SCOPES = ["jobs", "internships", "programs", "trainings"] a
 export type PartnerScope = (typeof PARTNER_SCOPES)[number];
 
 export const RESUME_MAX_BYTES = 5 * 1024 * 1024;
+
+/** Site-wide banner styles an admin can choose. */
+export const ANNOUNCEMENT_TYPES = ["announcement", "info", "success", "warning", "urgent", "maintenance"] as const;
+export type AnnouncementType = (typeof ANNOUNCEMENT_TYPES)[number];
+export const ANNOUNCEMENT_TYPE_LABEL: Record<AnnouncementType, string> = {
+  announcement: "Announcement",
+  info: "Information",
+  success: "Good news",
+  warning: "Warning",
+  urgent: "Urgent",
+  maintenance: "Maintenance",
+};

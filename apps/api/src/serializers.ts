@@ -1,6 +1,7 @@
 import {
   derivePublicStatus,
   DIGIBIZZ,
+  type AnnouncementDTO,
   type ApiKeyDTO,
   type ApplicationDTO,
   type ApplicationStatus,
@@ -9,7 +10,7 @@ import {
   type UserDTO,
 } from "@digibizz/jobs-shared";
 import { Types } from "mongoose";
-import type { ApiKeyDoc, ApplicationDoc, Opportunity, OpportunityDoc, UserDoc } from "./models";
+import type { AnnouncementDoc, ApiKeyDoc, ApplicationDoc, Opportunity, OpportunityDoc, UserDoc } from "./models";
 
 const iso = (d: Date | null | undefined) => (d ? new Date(d).toISOString() : null);
 const isoDay = (d: Date | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : null);
@@ -156,5 +157,27 @@ export function toApiKeyDTO(k: ApiKeyDoc): ApiKeyDTO {
     lastUsedAt: iso(k.lastUsedAt),
     revokedAt: iso(k.revokedAt),
     createdAt: iso(k.createdAt)!,
+  };
+}
+
+export function isAnnouncementLive(a: Pick<AnnouncementDoc, "active" | "startsAt" | "endsAt">, now = new Date()) {
+  return !!a.active && (!a.startsAt || a.startsAt <= now) && (!a.endsAt || a.endsAt > now);
+}
+
+export function toAnnouncementDTO(a: AnnouncementDoc): AnnouncementDTO {
+  return {
+    id: a.id,
+    type: a.type,
+    title: a.title,
+    message: a.message,
+    linkUrl: a.linkUrl,
+    linkLabel: a.linkLabel,
+    active: a.active,
+    dismissible: a.dismissible,
+    startsAt: iso(a.startsAt),
+    endsAt: iso(a.endsAt),
+    live: isAnnouncementLive(a),
+    createdAt: iso(a.createdAt)!,
+    updatedAt: iso(a.updatedAt)!,
   };
 }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  ANNOUNCEMENT_TYPES,
   APPLICATION_STATUSES,
   EMPLOYMENT_TYPES,
   GENDERS,
@@ -191,3 +192,34 @@ export const partnerQuerySchema = z.object({
   q: trimmed(100).optional(),
 });
 export type PartnerQuery = z.output<typeof partnerQuerySchema>;
+
+/* -------------------------------------------------------- announcements */
+
+const isoDateTime = z.iso
+  .datetime({ offset: true, message: "Use a valid date and time" })
+  .nullish()
+  .or(z.literal("").transform(() => null));
+
+export const announcementSchema = z
+  .object({
+    type: z.enum(ANNOUNCEMENT_TYPES).default("announcement"),
+    title: optionalText(80),
+    message: z.string().trim().min(3, "Write a short message").max(400),
+    linkUrl: z
+      .string()
+      .trim()
+      .max(500)
+      .refine((v) => !v || /^(https?:\/\/|\/)/i.test(v), "Use a full https:// link or a path starting with /")
+      .optional()
+      .default(""),
+    linkLabel: optionalText(40),
+    active: z.boolean().default(true),
+    dismissible: z.boolean().default(false),
+    startsAt: isoDateTime,
+    endsAt: isoDateTime,
+  })
+  .refine((v) => !v.startsAt || !v.endsAt || new Date(v.endsAt) > new Date(v.startsAt), {
+    path: ["endsAt"],
+    message: "End must be after the start",
+  });
+export type AnnouncementInput = z.input<typeof announcementSchema>;

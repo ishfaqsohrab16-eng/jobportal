@@ -1,4 +1,5 @@
 import type {
+  AnnouncementType,
   ApplicationStatus,
   Category,
   EmploymentType,
@@ -155,4 +156,21 @@ export interface ApplicationFacets {
   sources: string[];
   cities: string[];
   opportunities: { id: string; title: string; type: OpportunityType; status: OpportunityStatus; applications: number }[];
+}
+
+export interface AnnouncementDTO {
+  id: string;
+  type: AnnouncementType;
+  title: string;
+  message: string;
+  linkUrl: string;
+  linkLabel: string;
+  active: boolean;
+  dismissible: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  /** Derived: active and inside its schedule right now. */
+  live: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

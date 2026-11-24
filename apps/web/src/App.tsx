@@ -11,6 +11,7 @@ import {
   IdentificationCard,
   Key,
   Kanban,
+  Megaphone,
   Student,
   Tray,
   UserCircle,
@@ -22,6 +23,7 @@ import { Shell, type NavSection } from "@/components/layout/Shell";
 import type { QuickLink } from "@/components/layout/CommandPalette";
 import { Splash } from "@/components/layout/Splash";
 import { Toaster } from "@/components/ui";
+import { AnnouncementBar } from "@/components/announcements/AnnouncementBar";
 
 const Home = lazy(() => import("@/pages/public/Home"));
 const Explore = lazy(() => import("@/pages/public/Explore"));
@@ -41,6 +43,7 @@ const AdminOpportunityEditor = lazy(() => import("@/pages/admin/OpportunityEdito
 const AdminApplications = lazy(() => import("@/pages/admin/Applications"));
 const AdminCandidates = lazy(() => import("@/pages/admin/Candidates"));
 const AdminApiKeys = lazy(() => import("@/pages/admin/ApiKeys"));
+const AdminAnnouncements = lazy(() => import("@/pages/admin/Announcements"));
 const AdminSettings = lazy(() => import("@/pages/admin/Settings"));
 
 const i = "size-5";
@@ -95,6 +98,7 @@ function AdminShell() {
         { to: "/admin/opportunities", label: "Opportunities", icon: <Kanban className={i} /> },
         { to: "/admin/applications", label: "Applications", icon: <Tray className={i} /> },
         { to: "/admin/candidates", label: "Candidates", icon: <UsersThree className={i} /> },
+        { to: "/admin/announcements", label: "Announcements", icon: <Megaphone className={i} /> },
         { to: "/admin/api-keys", label: "Partner API", icon: <Key className={i} /> },
         { to: "/admin/settings", label: "Settings", icon: <Gear className={i} /> },
       ],
@@ -111,6 +115,7 @@ function AdminShell() {
 export default function App() {
   return (
     <BrowserRouter>
+      <AnnouncementBar />
       <Suspense fallback={<Splash />}>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -133,6 +138,7 @@ export default function App() {
             <Route path="applications" element={<AdminApplications />} />
             <Route path="candidates" element={<AdminCandidates />} />
             <Route path="api-keys" element={<AdminApiKeys />} />
+            <Route path="announcements" element={<AdminAnnouncements />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
 
